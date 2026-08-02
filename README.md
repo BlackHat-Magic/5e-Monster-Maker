@@ -1,34 +1,32 @@
 <div align="center">
 
-# Project Title
+# 5e Monster Maker
 
-Project Description
+D&D 5e/5.5e Monster Stat Block Maker Using a [TOML format](https://github.com/BlackHat-Magic/Obsidian-Stat-Blocks) for Portable Monster Files, Loosely Inspired by [Tetra-Cube's Stat Block Generator](https://tetra-cube.com/dnd/dnd-statblock.html) and [GiffyGlyph's Monster Maker](https://www.giffyglyph.com/monstermaker/app/)
 
 </div>
 
 
 ## Overview
 
-Project details
-
-### Goals
-
-List main objectives, problems you aim to solve.
+D&D 5e/5.5e Monster Stat Block Maker Using a [TOML format](https://github.com/BlackHat-Magic/Obsidian-Stat-Blocks) for Portable Monster Files, Loosely Inspired by [Tetra-Cube's Stat Block Generator](https://tetra-cube.com/dnd/dnd-statblock.html) and [GiffyGlyph's Monster Maker](https://www.giffyglyph.com/monstermaker/app/)
 
 ### Features
 
-- [x] Feature 1
-- [x] Feature 2
-- [ ] Feature 3
+- [ ] Import from/Export to Tetra-Cube
+- [ ] Import from/Export to Improved Initiative format
+- [ ] Import from/Export to JSON
+- [ ] Import from/Export to TOML
+- [ ] Export to Markdown
+- [ ] Export to GMBinder format
 
 ### Software Stack / Technologies Used
 
-- Language: ...
-- Framework: ...
-- Database: ...
-- etc...
+- Language: HTML/CSS/JavaScript/TypeScript
+- Framework: Svelte, CloudFlare
+- Database: D1, R2
 
 ## Quickstart
 
-Summary for developers with links to setup, build, test instructions in wiki or docs.
+TODO
 
