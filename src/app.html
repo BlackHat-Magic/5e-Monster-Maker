@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+		<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+		<script>
+			(() => {
+				const keys = {
+					light: ['catppuccin-latte', 'nord-light', 'strawberry-light', 'gruvbox-light', 'rose-pine-dawn'],
+					dark: ['catppuccin-mocha', 'nord-dark', 'strawberry-dark', 'gruvbox-dark', 'dracula', 'rose-pine']
+				};
+				const defaults = { light: 'catppuccin-latte', dark: 'catppuccin-mocha' };
+				const systemMode = () => {
+					try {
+						return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+					} catch {
+						return 'light';
+					}
+				};
+				const applyFallback = () => {
+					const mode = systemMode();
+					const root = document.documentElement;
+					root.dataset.mode = mode;
+					root.dataset.theme = defaults[mode];
+					root.style.colorScheme = mode;
+				};
+				try {
+					let storedMode = null;
+					let rawPreference = null;
+					try {
+						storedMode = localStorage.getItem('theme.mode');
+					} catch {
+						storedMode = null;
+					}
+					try {
+						rawPreference = localStorage.getItem('theme.pref');
+					} catch {
+						rawPreference = null;
+					}
+					const mode = storedMode === 'dark' || storedMode === 'light'
+						? storedMode
+						: systemMode();
+					let preferences = {};
+					if (rawPreference) {
+						try {
+							const parsed = JSON.parse(rawPreference);
+							if (typeof parsed === 'string') {
+								if (keys.light.includes(parsed)) preferences.light = parsed;
+								if (keys.dark.includes(parsed)) preferences.dark = parsed;
+							}
+							else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) preferences = parsed;
+						} catch {
+							preferences = {};
+						}
+					}
+					const theme = keys[mode].includes(preferences[mode]) ? preferences[mode] : defaults[mode];
+					const root = document.documentElement;
+					root.dataset.mode = mode;
+					root.dataset.theme = theme;
+					root.style.colorScheme = mode;
+				} catch {
+					applyFallback();
+				}
+			})();
+		</script>
+		<title>5e Monster Maker</title>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

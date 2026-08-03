@@ -1,0 +1,160 @@
+// @vitest-environment jsdom
+
+import { describe, expect, it } from "vitest";
+import { normalizeMonster } from "../../src/lib/monster/defaults";
+import { createPreviewModel } from "../../src/lib/monster/preview";
+import type { Monster } from "../../src/lib/monster/types";
+
+const dragon: Monster = normalizeMonster({
+  name: "Ancient Red Dragon",
+  shortened_name: "dragon",
+  basics: {
+    size: "gargantuan",
+    type: "dragon",
+    tag: "fire",
+    alignment: "chaotic evil",
+    flavor: "A terrible flame-breathing dragon.",
+  },
+  stats: {
+    base_ac: 22,
+    armor: "natural armor",
+    hit_dice: 28,
+    speed: [40, 0, 40, 80, 0],
+    ability_scores: [30, 10, 29, 18, 15, 23],
+  },
+  proficiencies: {
+    saves: ["str", "wis"],
+    skills: ["perception", "stealth"],
+    expertise: ["perception"],
+    damage_resistances: ["fire", "cold, poison"],
+    damage_immunities: ["fire"],
+    condition_immunities: ["frightened"],
+    senses: [60, 120, 0, 0, 30],
+    challenge: 24,
+  },
+  language: [
+    { name: "Common", status: "speaks" },
+    { name: "Draconic", status: "understands", but: "only a little" },
+  ],
+  is_legendary: true,
+  legendary_description: "{{MON}} has a custom legendary intro.",
+  is_villain: true,
+  villain_description: "{{MON}} has a custom villain intro.",
+  is_mythic: true,
+  mythic_description: "{{MON}} has a custom mythic intro.",
+  ability: [{ name: "Trait", description: "{{MON}} has a trait." }],
+  action: [
+    {
+      name: "Dangerous Action",
+      description: '{{MON}} acts. <img src="x" onerror="alert(1)">',
+    },
+  ],
+  bonus_action: [{ name: "Bonus", description: "{{MON}} uses a bonus action." }],
+  reaction: [{ name: "Reaction", description: "{{MON}} reacts." }],
+  legendary_action: [{ name: "Legendary", description: "{{MON}} takes a legendary action." }],
+  villain_action: [{ name: "Villain", description: "{{MON}} takes a villain action." }],
+  mythic_action: [{ name: "Mythic", description: "{{MON}} takes a mythic action." }],
+});
+
+describe("monster preview model", () => {
+  it("requires a browser DOM at the preview entry point and restores globals", () => {
+    const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
+
+    try {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: undefined, writable: true });
+      Object.defineProperty(globalThis, "document", { configurable: true, value: undefined, writable: true });
+      expect(() => createPreviewModel(dragon)).toThrow("createPreviewModel requires a browser DOM");
+    } finally {
+      if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+      else Reflect.deleteProperty(globalThis, "window");
+      if (documentDescriptor) Object.defineProperty(globalThis, "document", documentDescriptor);
+      else Reflect.deleteProperty(globalThis, "document");
+    }
+  });
+
+  it("generates identity, calculated fields, ability rows, labeled fields, and challenge data", () => {
+    const preview = createPreviewModel(dragon);
+
+    expect(preview.name.markdown).toBe("Ancient Red Dragon");
+    expect(preview.name.html).toContain("Ancient Red Dragon");
+    expect(preview.meta?.markdown).toBe("*gargantuan dragon (fire), chaotic evil*");
+    expect(preview.meta?.html).toContain("<em>gargantuan dragon (fire), chaotic evil</em>");
+    expect(preview.flavor?.html).toContain("A terrible flame-breathing dragon.");
+
+    expect(preview.armorClass.value).toBe("22 (natural armor)");
+    expect(preview.armorClass.html).toContain("<strong>Armor Class</strong> 22 (natural armor)");
+    expect(preview.hitPoints.value).toBe("546 (28d20 + 252)");
+    expect(preview.hitPoints.html).toContain("<strong>Hit Points</strong> 546 (28d20 + 252)");
+    expect(preview.speed.value).toBe("40 ft., climb 40 ft., fly 80 ft.");
+    expect(preview.speed.html).toContain("<strong>Speed</strong> 40 ft., climb 40 ft., fly 80 ft.");
+
+    expect(preview.abilities).toHaveLength(6);
+    expect(preview.abilities).toEqual([
+      { key: "str", label: "STR", score: 30, modifier: 10, modifierText: "+10" },
+      { key: "dex", label: "DEX", score: 10, modifier: 0, modifierText: "+0" },
+      { key: "con", label: "CON", score: 29, modifier: 9, modifierText: "+9" },
+      { key: "int", label: "INT", score: 18, modifier: 4, modifierText: "+4" },
+      { key: "wis", label: "WIS", score: 15, modifier: 2, modifierText: "+2" },
+      { key: "cha", label: "CHA", score: 23, modifier: 6, modifierText: "+6" },
+    ]);
+
+    const fieldValues = Object.fromEntries(preview.fields.map((item) => [item.label, item.value]));
+    expect(fieldValues).toMatchObject({
+      "Saving Throws": "STR +17, WIS +9",
+      Skills: "Perception +16 (expertise), Stealth +7",
+      "Damage Resistances": "fire; cold, poison",
+      "Damage Immunities": "fire",
+      "Condition Immunities": "frightened",
+      Senses: "blindsight 60 ft., darkvision 120 ft., passive Perception 26",
+      Languages: "Common, understands Draconic but only a little, telepathy 30 ft.",
+    });
+    expect(preview.fields.every((item) => item.html.includes("<strong>"))).toBe(true);
+
+    expect(preview.challenge).toMatchObject({
+      challenge: "24",
+      xp: 62000,
+      xpText: "62,000",
+      proficiencyBonus: 7,
+      proficiencyBonusText: "+7",
+    });
+    expect(preview.challenge.html).toContain("62,000 XP");
+    expect(preview.challenge.html).toContain("<strong>Proficiency Bonus</strong> +7");
+  });
+
+  it("generates all enabled sections, resolves tokens, sanitizes HTML, and gates mythic actions", () => {
+    const preview = createPreviewModel(dragon);
+    const sections = Object.fromEntries(preview.sections.map((section) => [section.key, section]));
+
+    expect(Object.keys(sections)).toEqual([
+      "ability",
+      "action",
+      "bonus_action",
+      "reaction",
+      "legendary_action",
+      "villain_action",
+      "mythic_action",
+    ]);
+    expect(sections.ability.items[0].html).toContain("The dragon has a trait");
+    expect(sections.action.items[0].html).toContain("The dragon acts");
+    expect(sections.action.items[0].html).not.toContain("onerror");
+    expect(sections.action.items[0].html).not.toContain("{{MON}}");
+    expect(sections.bonus_action.items[0].html).toContain("The dragon uses a bonus action");
+    expect(sections.reaction.items[0].html).toContain("The dragon reacts");
+    expect(sections.legendary_action.items[0].html).toContain("The dragon takes a legendary action");
+    expect(sections.villain_action.items[0].html).toContain("The dragon takes a villain action");
+    expect(sections.mythic_action.items[0].html).toContain("The dragon takes a mythic action");
+
+    expect(sections.legendary_action.intro?.html).toContain("The dragon has a custom legendary intro");
+    expect(sections.villain_action.intro?.html).toContain("The dragon has a custom villain intro");
+    expect(sections.mythic_action.intro?.html).toContain("The dragon has a custom mythic intro");
+
+    const gated = createPreviewModel(
+      normalizeMonster({
+        is_mythic: true,
+        mythic_action: [{ name: "Mythic", description: "Should be gated." }],
+      }),
+    );
+    expect(gated.sections.some((section) => section.key === "mythic_action")).toBe(false);
+  });
+});

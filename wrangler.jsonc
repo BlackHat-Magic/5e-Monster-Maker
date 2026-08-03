@@ -1,0 +1,11 @@
+{
+	"$schema": "https://unpkg.com/wrangler@4.118.0/config-schema.json",
+	"name": "5e-monster-maker",
+	"compatibility_date": "2026-08-02",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	}
+}
