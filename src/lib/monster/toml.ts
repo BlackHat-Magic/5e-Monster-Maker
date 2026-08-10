@@ -41,6 +41,7 @@ const PROFICIENCY_KEYS = [
   "saves",
   "skills",
   "expertise",
+  "damage_vulnerabilities",
   "damage_resistances",
   "damage_immunities",
   "condition_immunities",
@@ -211,7 +212,7 @@ function warnFixedArray(
   });
 }
 
-function warnStringArray(warnings: TomlWarning[], source: RecordLike, key: string, path: string): void {
+function warnStringArray(warnings: TomlWarning[], source: RecordLike, key: string, path: string, rejectBlank = false): void {
   if (!hasOwn(source, key)) return;
   const value = source[key];
   if (!Array.isArray(value)) {
@@ -220,6 +221,7 @@ function warnStringArray(warnings: TomlWarning[], source: RecordLike, key: strin
   }
   value.forEach((entry, index) => {
     if (typeof entry !== "string") invalidWarning(warnings, `${path}[${index}]`, "Expected a string; the entry was dropped.");
+    else if (rejectBlank && entry.trim() === "") invalidWarning(warnings, `${path}[${index}]`, "Expected a non-empty string; the blank entry was dropped.");
   });
 }
 
@@ -346,9 +348,10 @@ function collectInvalidWarnings(source: RecordLike): TomlWarning[] {
       warnEnumArray(warnings, proficiencies, "saves", "proficiencies.saves", ["str", "dex", "con", "int", "wis", "cha"]);
       warnEnumArray(warnings, proficiencies, "skills", "proficiencies.skills", ["acrobatics", "animal_handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight_of_hand", "stealth", "survival"]);
       warnEnumArray(warnings, proficiencies, "expertise", "proficiencies.expertise", ["acrobatics", "animal_handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight_of_hand", "stealth", "survival"]);
-      warnStringArray(warnings, proficiencies, "damage_resistances", "proficiencies.damage_resistances");
-      warnStringArray(warnings, proficiencies, "damage_immunities", "proficiencies.damage_immunities");
-      warnStringArray(warnings, proficiencies, "condition_immunities", "proficiencies.condition_immunities");
+      warnStringArray(warnings, proficiencies, "damage_vulnerabilities", "proficiencies.damage_vulnerabilities", true);
+      warnStringArray(warnings, proficiencies, "damage_resistances", "proficiencies.damage_resistances", true);
+      warnStringArray(warnings, proficiencies, "damage_immunities", "proficiencies.damage_immunities", true);
+      warnStringArray(warnings, proficiencies, "condition_immunities", "proficiencies.condition_immunities", true);
       warnFixedArray(warnings, proficiencies, "senses", "proficiencies.senses", 5, isDistance);
       if (hasOwn(proficiencies, "challenge") && !isSupportedChallengeRating(proficiencies.challenge)) {
         invalidWarning(warnings, "proficiencies.challenge", CHALLENGE_RATING_MESSAGE);

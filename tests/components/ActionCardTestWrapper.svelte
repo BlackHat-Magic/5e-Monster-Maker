@@ -28,7 +28,7 @@
 
 <RepeatableList label="Actions" items={items} createItem={createDefaultAction} getItemName={(action) => action.name} onItemsChange={handleItemsChange}>
   {#snippet children(action, index, update)}
-    <ActionCard item={action} index={index} onChange={update} />
+	    <ActionCard item={action} index={index} target="action" onChange={update} />
   {/snippet}
 </RepeatableList>
 

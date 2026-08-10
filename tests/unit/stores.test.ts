@@ -48,6 +48,7 @@ beforeEach(() => {
   ensureStorage();
   window.localStorage.clear();
   resetMonster();
+  notice.set(null);
   mode.set("light");
   selectedLightTheme.set("catppuccin-latte");
   selectedDarkTheme.set("catppuccin-mocha");
@@ -117,14 +118,18 @@ describe("monster draft store", () => {
   });
 
   it("does not throw when localStorage writes fail", () => {
-    Object.defineProperty(window, "localStorage", {
-      configurable: true,
-      get: () => {
-        throw new Error("storage unavailable");
-      },
+    const setItem = vi.fn(() => {
+      throw new Error("storage full");
     });
+    Object.defineProperty(window, "localStorage", { configurable: true, value: { ...testStorage, setItem } });
 
     expect(() => replaceMonster({ ...createDefaultMonster(), name: "Memory only" })).not.toThrow();
+    expect(get(notice)).toEqual({ kind: "error", message: "Local persistence is unavailable. Your draft remains in memory but may be lost on reload." });
+    monster.update((current) => ({ ...current, name: "Still editable" }));
+    expect(get(monster).name).toBe("Still editable");
+    expect(setItem).toHaveBeenCalledTimes(2);
+    expect(get(notice)?.kind).toBe("error");
+    Object.defineProperty(window, "localStorage", { configurable: true, value: testStorage });
   });
 
   it("exposes typed status and error notices", () => {

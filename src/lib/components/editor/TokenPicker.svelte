@@ -5,11 +5,12 @@
 	import { insertTokenAtSelection, TOKEN_GROUPS, tokenPickerKeyAction, tokenText, type TokenOption } from './action-editor-core';
 
 	type Props = {
+		idPrefix: string;
 		textarea: HTMLTextAreaElement | null;
 		onInsert: (value: string) => void;
 	};
 
-	let { textarea, onInsert }: Props = $props();
+	let { idPrefix, textarea, onInsert }: Props = $props();
 	let open = $state(false);
 	let activeIndex = $state(0);
 	let triggerElement: HTMLButtonElement | null = null;
@@ -17,6 +18,13 @@
 	let selectionStart = 0;
 	let selectionEnd = 0;
 	let options = $derived(TOKEN_GROUPS.flatMap((group) => group.options));
+	let dialogId = $derived(`${idPrefix}-token-picker`);
+	let headingId = $derived(`${idPrefix}-token-picker-heading`);
+	let hintId = $derived(`${idPrefix}-token-picker-hint`);
+
+	function groupId(groupId: string): string {
+		return `${idPrefix}-token-group-${groupId}`;
+	}
 
 	function rememberSelection(): void {
 		if (!textarea) return;
@@ -69,22 +77,22 @@
 </script>
 
 <div class="token-picker">
-	<button bind:this={triggerElement} class="token-picker__trigger" type="button" aria-haspopup="dialog" aria-expanded={open} aria-label="Insert a monster token" onclick={openPicker} onmousedown={rememberSelection}>
+	<button bind:this={triggerElement} class="token-picker__trigger" type="button" aria-haspopup="dialog" aria-expanded={open} aria-controls={dialogId} aria-label="Insert a monster token" onclick={openPicker} onmousedown={rememberSelection}>
 		<HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} aria-hidden="true" />
 		<span>Insert token</span>
 	</button>
 
 	{#if open}
-		<div bind:this={dialogElement} class="token-picker__dialog" role="dialog" aria-label="Monster token picker" aria-modal="false" tabindex="-1" onkeydown={handleKeydown}>
+		<div id={dialogId} bind:this={dialogElement} class="token-picker__dialog" role="dialog" aria-labelledby={headingId} aria-describedby={hintId} aria-modal="false" tabindex="-1" onkeydown={handleKeydown}>
 			<div class="token-picker__heading">
-				<div><p class="section-label">Template syntax</p><h4>Insert token</h4></div>
+				<div><h4 id={headingId}>Insert token</h4></div>
 				<button class="token-picker__close" type="button" aria-label="Close token picker" onclick={closePicker}>×</button>
 			</div>
-			<p class="token-picker__hint">Arrow keys browse. Enter inserts at the description caret or replaces its selection.</p>
+			<p id={hintId} class="token-picker__hint">Arrow keys browse. Enter inserts at the description caret or replaces its selection.</p>
 			<div class="token-picker__groups">
 				{#each TOKEN_GROUPS as group, groupIndex}
-					<section class="token-picker__group" aria-labelledby={`token-group-${group.id}`}>
-						<h5 id={`token-group-${group.id}`}>{group.label}</h5>
+					<section class="token-picker__group" aria-labelledby={groupId(group.id)}>
+						<h5 id={groupId(group.id)}>{group.label}</h5>
 						<div class="token-picker__options">
 							{#each group.options as option, optionIndex}
 								{@const flatIndex = TOKEN_GROUPS.slice(0, groupIndex).reduce((count, entry) => count + entry.options.length, 0) + optionIndex}

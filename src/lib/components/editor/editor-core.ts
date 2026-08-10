@@ -1,5 +1,18 @@
 import type { AbilityKey, EditorSection, LanguageEntry, Monster } from "$lib/monster/types";
 import type { ActionArrayKey } from "./action-editor-core";
+import {
+  Analytics01Icon,
+  BookOpen01Icon,
+  CrownIcon,
+  FlashIcon,
+  LanguageCircleIcon,
+  Shield02Icon,
+  ShieldEnergyIcon,
+  SkullIcon,
+  StarCircleIcon,
+  StarsIcon,
+  Sword01Icon,
+} from "@hugeicons/core-free-icons";
 
 export const ABILITY_KEYS: readonly AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 export const ABILITY_LABELS: Record<AbilityKey, string> = {
@@ -14,25 +27,23 @@ export const ABILITY_LABELS: Record<AbilityKey, string> = {
 export type EditorSectionMeta = {
   key: EditorSection;
   label: string;
-  group: "Build" | "Combat";
-  editor: "identity" | "features" | "basics" | "stats" | "proficiencies" | "languages" | "actions";
+  editor: "basics" | "stats" | "proficiencies" | "languages" | "actions";
+  icon: typeof BookOpen01Icon;
   actionTarget?: ActionArrayKey;
 };
 
 export const EDITOR_SECTIONS: readonly EditorSectionMeta[] = [
-  { key: "identity", label: "Identity", group: "Build", editor: "identity" },
-  { key: "features", label: "Features", group: "Build", editor: "features" },
-  { key: "basics", label: "Basics", group: "Build", editor: "basics" },
-  { key: "stats", label: "Core Stats", group: "Build", editor: "stats" },
-  { key: "proficiencies", label: "Proficiencies", group: "Build", editor: "proficiencies" },
-  { key: "language", label: "Languages", group: "Build", editor: "languages" },
-  { key: "traits", label: "Traits", group: "Combat", editor: "actions", actionTarget: "ability" },
-  { key: "action", label: "Actions", group: "Combat", editor: "actions", actionTarget: "action" },
-  { key: "bonus_action", label: "Bonus Actions", group: "Combat", editor: "actions", actionTarget: "bonus_action" },
-  { key: "reaction", label: "Reactions", group: "Combat", editor: "actions", actionTarget: "reaction" },
-  { key: "legendary_action", label: "Legendary", group: "Combat", editor: "actions", actionTarget: "legendary_action" },
-  { key: "villain_action", label: "Villain", group: "Combat", editor: "actions", actionTarget: "villain_action" },
-  { key: "mythic_action", label: "Mythic", group: "Combat", editor: "actions", actionTarget: "mythic_action" },
+  { key: "basics", label: "Basics", editor: "basics", icon: BookOpen01Icon },
+  { key: "stats", label: "Core Stats", editor: "stats", icon: Analytics01Icon },
+  { key: "proficiencies", label: "Proficiencies", editor: "proficiencies", icon: Shield02Icon },
+  { key: "language", label: "Languages", editor: "languages", icon: LanguageCircleIcon },
+  { key: "traits", label: "Traits", editor: "actions", icon: StarsIcon, actionTarget: "ability" },
+  { key: "action", label: "Actions", editor: "actions", icon: Sword01Icon, actionTarget: "action" },
+  { key: "bonus_action", label: "Bonus Actions", editor: "actions", icon: FlashIcon, actionTarget: "bonus_action" },
+  { key: "reaction", label: "Reactions", editor: "actions", icon: ShieldEnergyIcon, actionTarget: "reaction" },
+  { key: "legendary_action", label: "Legendary", editor: "actions", icon: CrownIcon, actionTarget: "legendary_action" },
+  { key: "villain_action", label: "Villain", editor: "actions", icon: SkullIcon, actionTarget: "villain_action" },
+  { key: "mythic_action", label: "Mythic", editor: "actions", icon: StarCircleIcon, actionTarget: "mythic_action" },
 ];
 
 export function editorSectionLabel(section: EditorSection): string {

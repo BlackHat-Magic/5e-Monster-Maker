@@ -5,6 +5,13 @@ import type { EditorSection, Monster } from "../monster/types";
 export type Notice = { kind: "status" | "error"; message: string };
 
 const STORAGE_KEY = "monster-maker.draft";
+let persistenceFailureReported = false;
+
+export function reportPersistenceFailure(): void {
+  if (persistenceFailureReported) return;
+  persistenceFailureReported = true;
+  notice.set({ kind: "error", message: "Local persistence is unavailable. Your draft remains in memory but may be lost on reload." });
+}
 
 function hasBrowserStorage(): boolean {
   if (typeof window === "undefined") return false;
@@ -45,15 +52,24 @@ export const monster: Writable<Monster> = {
   set: setMonster,
   update: (updater) => setMonster(updater(normalizeMonster(get(monsterState)))),
 };
-export const selectedSection: Writable<EditorSection> = writable("identity");
+export const selectedSection: Writable<EditorSection> = writable("basics");
+export const sectionScrollRequest: Writable<number> = writable(0);
 export const notice: Writable<Notice | null> = writable(null);
 
+export function requestSectionScroll(): void {
+  sectionScrollRequest.update((request) => request + 1);
+}
+
 export function persistMonster(value: Monster): void {
-  if (!hasBrowserStorage()) return;
+  if (typeof window === "undefined") return;
   try {
+    if (!hasBrowserStorage()) {
+      reportPersistenceFailure();
+      return;
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeMonster(value)));
   } catch {
-    // Storage may be disabled or full; the in-memory draft remains usable.
+    reportPersistenceFailure();
   }
 }
 

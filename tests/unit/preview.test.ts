@@ -26,6 +26,7 @@ const dragon: Monster = normalizeMonster({
     saves: ["str", "wis"],
     skills: ["perception", "stealth"],
     expertise: ["perception"],
+    damage_vulnerabilities: ["radiant", "fire"],
     damage_resistances: ["fire", "cold, poison"],
     damage_immunities: ["fire"],
     condition_immunities: ["frightened"],
@@ -103,12 +104,27 @@ describe("monster preview model", () => {
     expect(fieldValues).toMatchObject({
       "Saving Throws": "STR +17, WIS +9",
       Skills: "Perception +16 (expertise), Stealth +7",
-      "Damage Resistances": "fire; cold, poison",
+      "Damage Vulnerabilities": "radiant",
+       "Damage Resistances": "cold, poison",
       "Damage Immunities": "fire",
       "Condition Immunities": "frightened",
       Senses: "blindsight 60 ft., darkvision 120 ft., passive Perception 26",
       Languages: "Common, understands Draconic but only a little, telepathy 30 ft.",
     });
+    const defenseFieldLabels = preview.fields
+      .map((field) => field.label)
+      .filter((label) => [
+        "Damage Vulnerabilities",
+        "Damage Resistances",
+        "Damage Immunities",
+        "Condition Immunities",
+      ].includes(label));
+    expect(defenseFieldLabels).toEqual([
+      "Damage Vulnerabilities",
+      "Damage Resistances",
+      "Damage Immunities",
+      "Condition Immunities",
+    ]);
     expect(preview.fields.every((item) => item.html.includes("<strong>"))).toBe(true);
 
     expect(preview.challenge).toMatchObject({
@@ -120,6 +136,21 @@ describe("monster preview model", () => {
     });
     expect(preview.challenge.html).toContain("62,000 XP");
     expect(preview.challenge.html).toContain("<strong>Proficiency Bonus</strong> +7");
+  });
+
+  it("keeps raw damage immunities out of vulnerabilities and resistances", () => {
+    const preview = createPreviewModel({
+      proficiencies: {
+        damage_vulnerabilities: ["fire", "radiant"],
+        damage_resistances: ["Fire", "cold"],
+        damage_immunities: [" FIRE "],
+      },
+    });
+    const fieldValues = Object.fromEntries(preview.fields.map((item) => [item.label, item.value]));
+
+    expect(fieldValues["Damage Vulnerabilities"]).toBe("radiant");
+    expect(fieldValues["Damage Resistances"]).toBe("cold");
+    expect(fieldValues["Damage Immunities"]).toBe("fire");
   });
 
   it("generates all enabled sections, resolves tokens, sanitizes HTML, and gates mythic actions", () => {
@@ -156,5 +187,24 @@ describe("monster preview model", () => {
       }),
     );
     expect(gated.sections.some((section) => section.key === "mythic_action")).toBe(false);
+  });
+
+  it("gates legendary and villain sections independently and keeps mythic transformation gating", () => {
+    const sectionsFor = (flags: Pick<Monster, "is_legendary" | "is_villain" | "is_mythic">) => Object.fromEntries(
+      createPreviewModel(normalizeMonster({
+        ...flags,
+        legendary_action: [{ name: "Legendary", description: "Legendary entry." }],
+        villain_action: [{ name: "Villain", description: "Villain entry." }],
+        mythic_action: [{ name: "Mythic", description: "Mythic entry." }],
+      })).sections.map((section) => [section.key, section]),
+    );
+
+    expect(sectionsFor({ is_legendary: true, is_villain: false, is_mythic: false })).toHaveProperty("legendary_action");
+    expect(sectionsFor({ is_legendary: true, is_villain: false, is_mythic: false })).not.toHaveProperty("villain_action");
+    expect(sectionsFor({ is_legendary: false, is_villain: true, is_mythic: false })).not.toHaveProperty("legendary_action");
+    expect(sectionsFor({ is_legendary: false, is_villain: true, is_mythic: false })).toHaveProperty("villain_action");
+    expect(sectionsFor({ is_legendary: false, is_villain: false, is_mythic: true })).not.toHaveProperty("mythic_action");
+    expect(sectionsFor({ is_legendary: true, is_villain: false, is_mythic: true })).toHaveProperty("mythic_action");
+    expect(sectionsFor({ is_legendary: false, is_villain: true, is_mythic: true })).toHaveProperty("mythic_action");
   });
 });

@@ -9,6 +9,7 @@ import type {
   SkillKey,
   Stats,
 } from "./types";
+import { excludeDefenseValues, sortDefenseValues } from "./defenses";
 import { normalizeInnateSpellGroups, normalizeSpellcastingSpells, serializeInnateSpellGroups, serializeSpellcastingSpells } from "./spells";
 
 const ABILITY_KEYS: readonly AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -226,19 +227,25 @@ function normalizeSenseArray(value: unknown, fallback: Array<number | string>): 
 
 function normalizeProficiencies(value: unknown, fallback: Proficiencies): Proficiencies {
   const input = isRecord(value) ? value : {};
+  const damageImmunities = Array.isArray(ownValue(input, "damage_immunities"))
+    ? sortDefenseValues("damage", (ownValue(input, "damage_immunities") as unknown[]).filter((entry): entry is string => typeof entry === "string"))
+    : [];
+  const damageVulnerabilities = Array.isArray(ownValue(input, "damage_vulnerabilities"))
+    ? (ownValue(input, "damage_vulnerabilities") as unknown[]).filter((entry): entry is string => typeof entry === "string")
+    : [];
+  const damageResistances = Array.isArray(ownValue(input, "damage_resistances"))
+    ? (ownValue(input, "damage_resistances") as unknown[]).filter((entry): entry is string => typeof entry === "string")
+    : [];
   return {
     ...fallback,
     saves: enumArray(ownValue(input, "saves"), ABILITY_KEYS),
     skills: enumArray(ownValue(input, "skills"), SKILL_KEYS),
     expertise: enumArray(ownValue(input, "expertise"), SKILL_KEYS),
-    damage_resistances: Array.isArray(ownValue(input, "damage_resistances"))
-      ? (ownValue(input, "damage_resistances") as unknown[]).filter((entry): entry is string => typeof entry === "string")
-      : [],
-    damage_immunities: Array.isArray(ownValue(input, "damage_immunities"))
-      ? (ownValue(input, "damage_immunities") as unknown[]).filter((entry): entry is string => typeof entry === "string")
-      : [],
+    damage_vulnerabilities: excludeDefenseValues("damage", damageVulnerabilities, damageImmunities),
+    damage_resistances: excludeDefenseValues("damage", damageResistances, damageImmunities),
+    damage_immunities: damageImmunities,
     condition_immunities: Array.isArray(ownValue(input, "condition_immunities"))
-      ? (ownValue(input, "condition_immunities") as unknown[]).filter((entry): entry is string => typeof entry === "string")
+      ? sortDefenseValues("condition", (ownValue(input, "condition_immunities") as unknown[]).filter((entry): entry is string => typeof entry === "string"))
       : [],
     senses: normalizeSenseArray(ownValue(input, "senses"), fallback.senses ?? [0, 0, 0, 0, 0]),
     challenge: normalizeChallengeRating(ownValue(input, "challenge")),
@@ -281,6 +288,7 @@ export function createDefaultMonster(): Monster {
       saves: [],
       skills: [],
       expertise: [],
+      damage_vulnerabilities: [],
       damage_resistances: [],
       damage_immunities: [],
       condition_immunities: [],

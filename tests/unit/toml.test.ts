@@ -59,6 +59,38 @@ describe("monster TOML", () => {
     });
   });
 
+  it("imports, exports, and warns for damage vulnerabilities", () => {
+    const imported = importMonsterToml(`[proficiencies]
+damage_vulnerabilities = ["custom vulnerability", "FIRE", "acid", 7, ""]
+`);
+
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) return;
+    expect(imported.warnings).toEqual([
+      { path: "proficiencies.damage_vulnerabilities[3]", message: "Expected a string; the entry was dropped." },
+      { path: "proficiencies.damage_vulnerabilities[4]", message: "Expected a non-empty string; the blank entry was dropped." },
+    ]);
+    expect(imported.monster.proficiencies?.damage_vulnerabilities).toEqual(["acid", "fire", "custom vulnerability"]);
+
+    const roundTrip = importMonsterToml(exportMonsterToml(imported.monster));
+    expect(roundTrip.ok).toBe(true);
+    if (roundTrip.ok) {
+      expect(roundTrip.warnings).toEqual([]);
+      expect(roundTrip.monster.proficiencies?.damage_vulnerabilities).toEqual(["acid", "fire", "custom vulnerability"]);
+    }
+  });
+
+  it("round-trips a disabled Dexterity modifier without dropping Max Dex", () => {
+    const source = createDefaultMonster();
+    source.stats = { ...source.stats, add_dex: false, max_dex: 2 };
+
+    const result = importMonsterToml(exportMonsterToml(source));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.monster.stats).toMatchObject({ add_dex: false, max_dex: 2 });
+  });
+
   it("preserves supported challenge forms and safely replaces invalid imports", () => {
     const validValues = ["0", "1/8", "1/4", "1/2", "1", "30"];
     for (const challenge of validValues) {
@@ -158,6 +190,26 @@ reach = "ten"
     expect(result.monster.stats?.speed).toHaveLength(5);
     expect(result.monster.language).toEqual([]);
     expect(result.monster.action).toEqual([]);
+  });
+
+  it("warns when defense arrays contain blank entries dropped during normalization", () => {
+    const result = importMonsterToml(`[proficiencies]
+damage_resistances = ["fire", "   ", "\\t", "acid"]
+damage_immunities = ["", "cold"]
+condition_immunities = ["  "]
+`);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings).toEqual([
+      { path: "proficiencies.damage_resistances[1]", message: "Expected a non-empty string; the blank entry was dropped." },
+      { path: "proficiencies.damage_resistances[2]", message: "Expected a non-empty string; the blank entry was dropped." },
+      { path: "proficiencies.damage_immunities[0]", message: "Expected a non-empty string; the blank entry was dropped." },
+      { path: "proficiencies.condition_immunities[0]", message: "Expected a non-empty string; the blank entry was dropped." },
+    ]);
+    expect(result.monster.proficiencies?.damage_resistances).toEqual(["acid", "fire"]);
+    expect(result.monster.proficiencies?.damage_immunities).toEqual(["cold"]);
+    expect(result.monster.proficiencies?.condition_immunities).toEqual([]);
   });
 
   it("safely clones prototype-named spell data without losing nested values", () => {

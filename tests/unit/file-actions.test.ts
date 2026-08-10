@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultMonster } from "../../src/lib/monster/defaults";
 import { formatTomlWarning, IMPORT_SIZE_LIMIT, isImportTooLarge, needsDraftConfirmation } from "../../src/lib/components/app-shell/file-actions";
+import { clearEditorDrafts, markEditorDraft } from "../../src/lib/state/editor-draft-store";
 
 describe("FileActions draft confirmation guard", () => {
-  it("requires confirmation for both New and Reset when the draft is populated", () => {
+  it("requires confirmation before New replaces a populated draft", () => {
     const draft = { ...createDefaultMonster(), name: "Populated draft" };
 
     expect(needsDraftConfirmation(draft)).toBe(true);
   });
 
   it("allows a fresh default draft through immediately", () => {
+    expect(needsDraftConfirmation(createDefaultMonster())).toBe(false);
+  });
+
+  it("requires confirmation when an editor has a pending local draft", () => {
+    markEditorDraft("stats-editor", "base_ac");
+    expect(needsDraftConfirmation(createDefaultMonster())).toBe(true);
+    clearEditorDrafts("stats-editor");
     expect(needsDraftConfirmation(createDefaultMonster())).toBe(false);
   });
 

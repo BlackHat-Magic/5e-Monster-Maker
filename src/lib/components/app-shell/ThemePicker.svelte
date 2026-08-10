@@ -1,16 +1,31 @@
 <script lang="ts">
 	import { HugeiconsIcon } from '@hugeicons/svelte';
-	import { CheckmarkCircle04Icon, ColorsIcon, Moon01Icon, Sun01Icon } from '@hugeicons/core-free-icons';
-	import { Popover } from '$lib/components/ui/popover/index.js';
+	import { CheckmarkCircle04Icon, Moon01Icon, Sun01Icon } from '@hugeicons/core-free-icons';
+	import { fly } from 'svelte/transition';
 	import { Tabs } from '$lib/components/ui/tabs/index.js';
 	import { darkPalettes, lightPalettes, type DarkThemeKey, type LightThemeKey, type ThemeKey, type ThemeMode } from '$lib/theme/palettes';
 	import { darkTheme, lightTheme, mode, setDarkTheme, setLightTheme, toggleMode } from '$lib/state/theme-store';
 
 	let open = $state(false);
-	let activeMode = $state<ThemeMode>('light');
+	let activeMode = $state<ThemeMode>($mode);
+	let reducedMotion = $state(false);
+	let picker: HTMLDivElement;
+	let trigger: HTMLButtonElement;
 
 	$effect(() => {
 		activeMode = $mode;
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+		if (!mediaQuery) return;
+		const update = () => {
+			reducedMotion = mediaQuery.matches;
+		};
+		update();
+		mediaQuery.addEventListener?.('change', update);
+		return () => mediaQuery.removeEventListener?.('change', update);
 	});
 
 	function chooseMode(nextMode: ThemeMode): void {
@@ -23,23 +38,69 @@
 		else setDarkTheme(key as DarkThemeKey);
 	}
 
+	function openPicker(): void {
+		open = true;
+	}
+
+	function closePicker(): void {
+		open = false;
+	}
+
+	function closePickerAndRestoreFocus(): void {
+		trigger?.focus({ preventScroll: true });
+		closePicker();
+	}
+
+	function handleFocusOut(event: FocusEvent): void {
+		if (!picker.contains(event.relatedTarget as Node | null)) closePicker();
+	}
+
+	function handleKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			closePickerAndRestoreFocus();
+		}
+	}
+
 	function isCurrent(key: ThemeKey): boolean {
 		return $mode === 'light' ? $lightTheme === key : $darkTheme === key;
 	}
 </script>
 
-<Popover.Root bind:open>
-	<Popover.Trigger class="shell-icon-button" type="button" aria-label="Choose theme" title="Choose theme">
-		<HugeiconsIcon icon={ColorsIcon} size={17} strokeWidth={1.8} />
-	</Popover.Trigger>
-	<Popover.Portal>
-		<Popover.Content class="theme-popover" align="end">
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div
+	class="theme-picker"
+	role="group"
+	aria-label="Theme picker"
+	bind:this={picker}
+	onpointerenter={openPicker}
+	onpointerleave={closePicker}
+	onfocusin={openPicker}
+	onfocusout={handleFocusOut}
+	onkeydown={handleKeydown}
+>
+	<button
+		class="shell-icon-button"
+		type="button"
+		bind:this={trigger}
+		onclick={toggleMode}
+		aria-label="Toggle light/dark theme"
+		title="Toggle theme"
+		aria-expanded={open}
+	>
+		<HugeiconsIcon icon={$mode === 'dark' ? Moon01Icon : Sun01Icon} size={17} strokeWidth={1.8} />
+	</button>
+	{#if open}
+		<div
+			class="theme-popover"
+			transition:fly={{ y: 6, duration: reducedMotion ? 0 : 140 }}
+			inert={!open}
+			aria-hidden={!open}
+		>
 			<div class="theme-popover__heading">
-				<div><p class="section-label">Appearance</p><h2>Color system</h2></div>
-				<button class="theme-mode-toggle" type="button" onclick={toggleMode} aria-label={`Switch to ${$mode === 'light' ? 'dark' : 'light'} mode`}>
-					<HugeiconsIcon icon={$mode === 'light' ? Moon01Icon : Sun01Icon} size={16} strokeWidth={1.8} />
-					<span>{$mode === 'light' ? 'Dark' : 'Light'}</span>
-				</button>
+				<p class="section-label">Appearance</p>
+				<h2>{activeMode === 'light' ? 'Choose a light theme' : 'Choose a dark theme'}</h2>
 			</div>
 			<Tabs.Root bind:value={activeMode} onValueChange={(value) => chooseMode(value as ThemeMode)}>
 				<Tabs.List class="theme-tabs" aria-label="Theme mode">
@@ -49,7 +110,6 @@
 				<Tabs.Content value="light" class="theme-list" tabindex={0}>
 					{#each lightPalettes as palette}
 						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
-							<span class="theme-swatch" style={`--swatch-bg: ${palette.colors.background}; --swatch-accent: ${palette.colors.accent};`}></span>
 							<span>{palette.label}</span>
 							{#if isCurrent(palette.key)}<HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} strokeWidth={2} aria-hidden="true" />{/if}
 						</button>
@@ -58,13 +118,12 @@
 				<Tabs.Content value="dark" class="theme-list" tabindex={0}>
 					{#each darkPalettes as palette}
 						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
-							<span class="theme-swatch" style={`--swatch-bg: ${palette.colors.background}; --swatch-accent: ${palette.colors.accent};`}></span>
 							<span>{palette.label}</span>
 							{#if isCurrent(palette.key)}<HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} strokeWidth={2} aria-hidden="true" />{/if}
 						</button>
 					{/each}
 				</Tabs.Content>
 			</Tabs.Root>
-		</Popover.Content>
-	</Popover.Portal>
-</Popover.Root>
+		</div>
+	{/if}
+</div>

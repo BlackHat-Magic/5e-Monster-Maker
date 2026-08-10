@@ -18,6 +18,7 @@ import {
 } from "./calculations";
 import { markdownToHtml } from "./markdown";
 import { finalizeDescription, itemSuffix, presetDescription } from "./presets";
+import { excludeDefenseValues, sortDefenseValues } from "./defenses";
 import type { AbilityKey, ActionItem, LanguageEntry, Monster } from "./types";
 
 export interface PreviewText {
@@ -184,6 +185,17 @@ export function labeledFields(monster: Monster): LabeledPreview[] {
   const saves = monster.proficiencies?.saves ?? [];
   const skills = monster.proficiencies?.skills ?? [];
   const expertise = monster.proficiencies?.expertise ?? [];
+  const damageImmunities = sortDefenseValues("damage", monster.proficiencies?.damage_immunities ?? []);
+  const damageVulnerabilities = excludeDefenseValues(
+    "damage",
+    monster.proficiencies?.damage_vulnerabilities ?? [],
+    damageImmunities,
+  );
+  const damageResistances = excludeDefenseValues(
+    "damage",
+    monster.proficiencies?.damage_resistances ?? [],
+    damageImmunities,
+  );
   const proficiency = proficiencyFromMonster(monster);
   const modifiers = abilityMods(monster);
   const fields: LabeledPreview[] = [];
@@ -208,8 +220,9 @@ export function labeledFields(monster: Monster): LabeledPreview[] {
   }
 
   for (const [label, values] of [
-    ["Damage Resistances", monster.proficiencies?.damage_resistances],
-    ["Damage Immunities", monster.proficiencies?.damage_immunities],
+    ["Damage Vulnerabilities", damageVulnerabilities],
+    ["Damage Resistances", damageResistances],
+    ["Damage Immunities", damageImmunities],
     ["Condition Immunities", monster.proficiencies?.condition_immunities],
   ] as const) {
     const value = joinList(values);
@@ -297,9 +310,9 @@ export function sectionPreviews(monster: Monster): PreviewSection[] {
     ["action", monster.action ?? []],
     ["bonus_action", monster.bonus_action ?? []],
     ["reaction", monster.reaction ?? []],
-    ["legendary_action", monster.legendary_action ?? []],
-    ["villain_action", monster.villain_action ?? []],
   ];
+  if (monster.is_legendary) entries.push(["legendary_action", monster.legendary_action ?? []]);
+  if (monster.is_villain) entries.push(["villain_action", monster.villain_action ?? []]);
   if (monster.is_mythic && (monster.is_legendary || monster.is_villain)) {
     entries.push(["mythic_action", monster.mythic_action ?? []]);
   }

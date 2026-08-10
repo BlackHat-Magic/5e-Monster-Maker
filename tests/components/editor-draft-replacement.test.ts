@@ -2,6 +2,7 @@
 
 import { flushSync, mount, unmount } from 'svelte';
 import { beforeEach, describe, expect, it } from 'vitest';
+import ActionSectionEditor from '../../src/lib/components/editor/ActionSectionEditor.svelte';
 import StatsEditor from '../../src/lib/components/editor/StatsEditor.svelte';
 import ProficienciesEditor from '../../src/lib/components/editor/ProficienciesEditor.svelte';
 import { createDefaultMonster } from '../../src/lib/monster/defaults';
@@ -80,6 +81,46 @@ describe('ProficienciesEditor draft replacement behavior', () => {
 
     expect(input.value).toBe('12x');
     expect(document.body.textContent).toContain('Use zero or a positive whole number.');
+    unmount(component);
+  });
+});
+
+describe('ActionCard draft replacement behavior', () => {
+  it('preserves an invalid draft through normalized edits and clears it on replacement', () => {
+    const component = mount(ActionSectionEditor, {
+      target: document.body,
+      props: { target: 'action', sectionTitle: 'Actions' },
+    });
+    replaceMonster({
+      ...createDefaultMonster(),
+      action: [
+        { name: 'Action A', preset: 'attack' },
+        { name: 'Action B', preset: 'attack' },
+      ],
+    });
+    flushSync();
+
+    const reach = document.querySelector('#action-action-0-attack-reach') as HTMLInputElement;
+    dispatchInput(reach, '12x');
+    expect(reach.getAttribute('aria-invalid')).toBe('true');
+
+    const actionBName = document.querySelector('#action-action-1-name-field') as HTMLInputElement;
+    dispatchInput(actionBName, 'Edited action B');
+
+    expect(reach.value).toBe('12x');
+    expect(reach.getAttribute('aria-invalid')).toBe('true');
+
+    replaceMonster({
+      ...createDefaultMonster(),
+      action: [
+        { name: 'Action A', preset: 'attack' },
+        { name: 'Edited action B', preset: 'attack' },
+      ],
+    });
+    flushSync();
+
+    expect(reach.value).toBe('');
+    expect(reach.getAttribute('aria-invalid')).toBe('false');
     unmount(component);
   });
 });

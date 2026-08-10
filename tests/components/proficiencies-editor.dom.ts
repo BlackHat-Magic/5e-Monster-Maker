@@ -62,4 +62,91 @@ describe("ProficienciesEditor", () => {
     unsubscribe();
     expect(current?.proficiencies?.senses?.[0]).toBe(60);
   });
+
+  it("uses canonical selectors and removes a matching resistance when adding immunity", () => {
+    monster.set({
+      ...createDefaultMonster(),
+      proficiencies: {
+        ...createDefaultMonster().proficiencies,
+        damage_resistances: ["fire", "cold"],
+      },
+    });
+    mounted = mount(ProficienciesEditorTestWrapper, { target: document.body });
+    flushSync();
+
+    const resistanceSelect = document.getElementById("canonical-damage-damage-resistances") as HTMLSelectElement;
+    resistanceSelect.value = "acid";
+    resistanceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+
+    const immunitySelect = document.getElementById("canonical-damage-damage-immunities") as HTMLSelectElement;
+    immunitySelect.value = "__other__";
+    immunitySelect.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    const customInput = document.querySelector<HTMLInputElement>('input[aria-label="Custom damage immunities"]')!;
+    customInput.value = " FIRE ";
+    customInput.dispatchEvent(new Event("input", { bubbles: true }));
+    document.querySelector<HTMLButtonElement>("#canonical-damage-damage-immunities + .canonical-selector__custom button")!.click();
+    flushSync();
+
+    let current: ReturnType<typeof createDefaultMonster> | undefined;
+    const unsubscribe = monster.subscribe((value) => (current = value));
+    unsubscribe();
+    expect(current?.proficiencies?.damage_resistances).toEqual(["acid", "cold"]);
+    expect(current?.proficiencies?.damage_immunities).toEqual(["fire"]);
+    expect(document.querySelector('[aria-label="Remove fire"]')).not.toBeNull();
+    expect(document.querySelectorAll(".repeatable")).toHaveLength(0);
+  });
+
+  it("exposes a damage vulnerabilities selector and stores canonical selections", () => {
+    monster.set(createDefaultMonster());
+    mounted = mount(ProficienciesEditorTestWrapper, { target: document.body });
+    flushSync();
+
+    const vulnerabilitySelect = document.getElementById("canonical-damage-damage-vulnerabilities") as HTMLSelectElement;
+    expect(vulnerabilitySelect.getAttribute("aria-label")).toBe("Add damage vulnerabilities");
+    expect(document.querySelector('label[for="canonical-damage-damage-vulnerabilities"]')?.textContent).toBe("Damage vulnerabilities");
+    const vulnerabilityHelp = document.querySelector<HTMLButtonElement>('[aria-label="Damage vulnerabilities information"]');
+    expect(vulnerabilityHelp).not.toBeNull();
+    const vulnerabilityHelpId = vulnerabilityHelp?.getAttribute("aria-describedby");
+    expect(vulnerabilityHelpId).not.toBeNull();
+    expect(document.getElementById(vulnerabilityHelpId ?? "")?.textContent).toContain("Damage types or sources that deal extra damage");
+
+    vulnerabilitySelect.value = "fire";
+    vulnerabilitySelect.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+
+    let current: ReturnType<typeof createDefaultMonster> | undefined;
+    const unsubscribe = monster.subscribe((value) => (current = value));
+    unsubscribe();
+    expect(current?.proficiencies?.damage_vulnerabilities).toEqual(["fire"]);
+  });
+
+  it("filters resistance and vulnerability updates that match current immunities", () => {
+    const base = createDefaultMonster();
+    monster.set({
+      ...base,
+      proficiencies: {
+        ...base.proficiencies,
+        damage_immunities: ["fire"],
+      },
+    });
+    mounted = mount(ProficienciesEditorTestWrapper, { target: document.body });
+    flushSync();
+
+    const resistanceSelect = document.getElementById("canonical-damage-damage-resistances") as HTMLSelectElement;
+    resistanceSelect.value = "fire";
+    resistanceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    const vulnerabilitySelect = document.getElementById("canonical-damage-damage-vulnerabilities") as HTMLSelectElement;
+    vulnerabilitySelect.value = "fire";
+    vulnerabilitySelect.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+
+    let current: ReturnType<typeof createDefaultMonster> | undefined;
+    const unsubscribe = monster.subscribe((value) => (current = value));
+    unsubscribe();
+    expect(current?.proficiencies?.damage_immunities).toEqual(["fire"]);
+    expect(current?.proficiencies?.damage_resistances).toEqual([]);
+    expect(current?.proficiencies?.damage_vulnerabilities).toEqual([]);
+  });
 });

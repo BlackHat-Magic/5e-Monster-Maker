@@ -13,7 +13,10 @@ D&D 5e/5.5e Monster Stat Block Maker Using a [TOML format](https://github.com/Bl
 
 ### Current Features
 
-- Edit identity, feature, basics, statistics, proficiencies, languages, traits, actions, bonus actions, reactions, legendary actions, villain actions, and mythic actions.
+- Edit identity, basics, statistics, proficiencies, languages, traits, actions, bonus actions, reactions, and the individual Legendary, Villain, and Mythic sections.
+- Configure Legendary, Villain, and Mythic independently with each section's classification checkbox, introduction, and action list.
+- Work preview-first in a single-column layout with the live stat block preview above the editor at every viewport size.
+- Show Max Dex only when Add Dexterity modifier is enabled, while preserving its value when the control is hidden and restored.
 - Import and export the app's portable monster TOML format.
 - Render Markdown descriptions and monster tokens in the stat block preview.
 - Keep a local browser draft and theme preference without a server.
@@ -125,6 +128,17 @@ The importer accepts TOML tables matching that schema. Unknown keys are ignored 
 The current monster draft is stored in browser `localStorage` under `monster-maker.draft`; theme mode and palette preferences are stored there as well. Nothing is uploaded, synchronized, or recoverable from another browser unless the user exports a TOML file. Clearing site data or using a different browser removes access to the local draft.
 
 Available palettes include Catppuccin, Nord, Strawberry, Gruvbox, and Rose Pine in light and dark variants, plus Dracula in dark mode. Light/dark mode can follow the system preference initially and can then be changed in the app.
+
+## Interaction Notes
+
+- The identity strip stays visible above the editor while navigating between sections. It contains the creature name, shortened name, shortened plural, and proper-noun setting.
+- The fixed icon rail contains the editor sections except Identity. On desktop it expands while the pointer is over it and closes on mouse leave even when a rail control retains focus. On mobile, tapping or clicking the toggle opens a fullscreen rail; the close control, `Escape`, or selecting a section closes it, and selection preserves the active section.
+- Every info icon owns one help popover labelled with the field name, such as “Name information”. Popovers work with hover, keyboard focus, and touch/click, and close when dismissed, when `Escape` is pressed, or when focus moves away. Proper noun has one explanation, and Add Dexterity modifier does not add a duplicate explanation.
+- Legendary, Villain, and Mythic are individual editor sections. Each section owns its classification checkbox, introduction, and action list; the Villain help card links to the related MCDM source.
+- Damage and condition defenses use canonical selectors. Canonical values are ordered first, custom values are ordered last, and `Other` reveals a field for adding a custom value.
+- Adding a damage immunity removes the matching damage resistance, so immunity takes precedence over resistance for the same value.
+- Import, export, new-draft, and error feedback appears in a dismissible toast region. Toasts and warnings are local-only UI state; they are not uploaded or persisted.
+- The shell has no Reset control, file drop zone, or current-draft panel. Use New, Import, and Export for draft lifecycle actions.
 
 ## Architecture
 

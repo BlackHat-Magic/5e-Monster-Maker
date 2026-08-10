@@ -4,13 +4,12 @@
 </script>
 
 <a
-	class="shell-link shell-link--support"
+	class="shell-icon-button shell-icon-button--support"
 	href="https://ko-fi.com/lukethenderson"
 	target="_blank"
 	rel="noopener noreferrer"
 	aria-label="Support 5e Monster Maker on Ko-fi"
 	title="Support on Ko-fi"
 >
-	<HugeiconsIcon icon={Coffee02Icon} size={16} strokeWidth={1.8} />
-	<span>Ko-fi</span>
+	<HugeiconsIcon icon={Coffee02Icon} size={18} strokeWidth={1.8} />
 </a>

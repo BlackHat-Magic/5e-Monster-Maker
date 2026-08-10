@@ -45,15 +45,13 @@
 	}
 </script>
 
-{#if !isMounted}
+	{#if !isMounted}
 	<section class="preview-loading" aria-label="Preparing stat block preview">
-		<p class="section-label">Live output / preparing</p>
 		<h2>Preparing stat block</h2>
 		<p>The live preview will appear as soon as the editor is ready.</p>
 	</section>
-{:else if previewError}
+	{:else if previewError}
 	<section class="preview-error" role="alert" aria-labelledby="preview-error-heading">
-		<p class="section-label">Live output / unavailable</p>
 		<h2 id="preview-error-heading">Preview could not be rendered</h2>
 		<p>{previewError}</p>
 		<p>The editor is still available. Continue editing and try the preview again.</p>
@@ -78,7 +76,11 @@
 			<PreviewField field={preview.speed} />
 		</section>
 
+		<div class="stat-block__rule" aria-hidden="true"></div>
+
 		<AbilityTable abilities={preview.abilities} />
+
+		<div class="stat-block__rule" aria-hidden="true"></div>
 
 		<section class="stat-block__fields" aria-label="Additional statistics">
 			{#each preview.fields as field}
@@ -86,8 +88,11 @@
 			{/each}
 		</section>
 
+		<div class="stat-block__challenge" aria-label="Challenge and proficiency bonus">
+			<span>Challenge {preview.challenge.challenge} ({preview.challenge.xpText} XP)</span>
+			<span class="stat-block__prof-bonus"><strong>Proficiency Bonus</strong> {preview.challenge.proficiencyBonusText}</span>
+		</div>
 		<div class="stat-block__rule stat-block__rule--thin" aria-hidden="true"></div>
-		<div class="stat-block__challenge">{@html preview.challenge.html}</div>
 
 		{#each preview.sections as section (section.key)}
 			<PreviewActionSection {section} />

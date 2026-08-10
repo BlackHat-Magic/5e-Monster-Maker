@@ -1,11 +1,12 @@
 import { createDefaultMonster } from '$lib/monster/defaults';
 import type { TomlWarning } from '$lib/monster/toml';
 import type { Monster } from '$lib/monster/types';
+import { hasPendingEditorDraft } from '$lib/state/editor-draft-store';
 
 export const IMPORT_SIZE_LIMIT = 5 * 1024 * 1024;
 
 export function needsDraftConfirmation(draft: Monster): boolean {
-	return JSON.stringify(draft) !== JSON.stringify(createDefaultMonster());
+	return hasPendingEditorDraft() || JSON.stringify(draft) !== JSON.stringify(createDefaultMonster());
 }
 
 export function isImportTooLarge(size: number): boolean {

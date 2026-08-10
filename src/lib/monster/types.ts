@@ -33,8 +33,6 @@ export type PresetName =
   | "innate_spellcasting";
 
 	export type EditorSection =
-	  | "identity"
-	  | "features"
 	  | "basics"
 	  | "stats"
 	  | "proficiencies"
@@ -110,6 +108,7 @@ export interface Proficiencies {
   saves?: AbilityKey[];
   skills?: SkillKey[];
   expertise?: SkillKey[];
+  damage_vulnerabilities?: string[];
   damage_resistances?: string[];
   damage_immunities?: string[];
   condition_immunities?: string[];

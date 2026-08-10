@@ -81,17 +81,17 @@ describe('editor core helpers', () => {
 
 	it('navigates every section in rendered order across visual groups', () => {
 		const sections = [
-			'identity', 'features', 'basics', 'stats', 'proficiencies', 'language', 'traits', 'action', 'bonus_action', 'reaction', 'legendary_action', 'villain_action', 'mythic_action',
+			'basics', 'stats', 'proficiencies', 'language', 'traits', 'action', 'bonus_action', 'reaction', 'legendary_action', 'villain_action', 'mythic_action',
 		].map((key) => ({ key }));
 
 		expect(sectionNavigationTarget(sections, 'language', 'ArrowDown')?.key).toBe('traits');
 		expect(sectionNavigationTarget(sections, 'traits', 'ArrowUp')?.key).toBe('language');
 		expect(sectionNavigationTarget(sections, 'language', 'ArrowRight')?.key).toBe('traits');
 		expect(sectionNavigationTarget(sections, 'traits', 'ArrowLeft')?.key).toBe('language');
-		expect(sectionNavigationTarget(sections, 'mythic_action', 'ArrowDown')?.key).toBe('identity');
-		expect(sectionNavigationTarget(sections, 'identity', 'ArrowUp')?.key).toBe('mythic_action');
-		expect(sectionNavigationTarget(sections, 'mythic_action', 'Home')?.key).toBe('identity');
-		expect(sectionNavigationTarget(sections, 'identity', 'End')?.key).toBe('mythic_action');
+		expect(sectionNavigationTarget(sections, 'mythic_action', 'ArrowDown')?.key).toBe('basics');
+		expect(sectionNavigationTarget(sections, 'basics', 'ArrowUp')?.key).toBe('mythic_action');
+		expect(sectionNavigationTarget(sections, 'mythic_action', 'Home')?.key).toBe('basics');
+		expect(sectionNavigationTarget(sections, 'basics', 'End')?.key).toBe('mythic_action');
 	});
 
 	it('validates numeric drafts without coercing intermediate or invalid values', () => {
@@ -137,22 +137,23 @@ describe('editor core helpers', () => {
 	});
 
 	it('shares the rendered section order and linked tabpanel ids', () => {
-		expect(EDITOR_SECTIONS).toHaveLength(13);
-		expect(EDITOR_SECTIONS[1].key).toBe('features');
-		expect(EDITOR_SECTIONS[5].key).toBe('language');
-		expect(EDITOR_SECTIONS[6].key).toBe('traits');
-		expect(EDITOR_SECTIONS[12].key).toBe('mythic_action');
+		expect(EDITOR_SECTIONS).toHaveLength(11);
+		expect(EDITOR_SECTIONS.some((section) => section.label === 'Identity')).toBe(false);
+		expect(EDITOR_SECTIONS.map((section) => String(section.key))).not.toContain('features');
+		expect(EDITOR_SECTIONS.map((section) => String(section.editor))).not.toContain('features');
+		expect(EDITOR_SECTIONS.every((section) => section.icon)).toBe(true);
+		expect(EDITOR_SECTIONS[0].key).toBe('basics');
+		expect(EDITOR_SECTIONS[3].key).toBe('language');
+		expect(EDITOR_SECTIONS[4].key).toBe('traits');
+		expect(EDITOR_SECTIONS[10].key).toBe('mythic_action');
 		expect(editorTabId('stats')).toBe('section-tab-stats');
 		expect(EDITOR_PANEL_ID).toBe('editor-panel');
 		expect(editorPanelId()).toBe(EDITOR_PANEL_ID);
 	});
 
-	it('keeps Features as metadata editing and maps Traits to the ability action array', () => {
-		const features = EDITOR_SECTIONS.find((section) => section.key === 'features');
+	it('maps Traits and special sections to their action arrays', () => {
 		const traits = EDITOR_SECTIONS.find((section) => section.key === 'traits');
 
-		expect(features).toMatchObject({ key: 'features', label: 'Features', editor: 'features' });
-		expect(features?.actionTarget).toBeUndefined();
 		expect(traits).toMatchObject({ key: 'traits', label: 'Traits', editor: 'actions', actionTarget: 'ability' });
 		expect(EDITOR_SECTIONS.filter((section) => section.editor === 'actions').map((section) => section.actionTarget)).toEqual([
 			'ability',

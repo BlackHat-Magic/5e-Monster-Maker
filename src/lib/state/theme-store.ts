@@ -10,6 +10,7 @@ import {
   type ThemeKey,
   type ThemeMode,
 } from "../theme/palettes";
+import { notice, reportPersistenceFailure } from "./monster-store";
 
 const PREF_KEY = "theme.pref";
 const MODE_KEY = "theme.mode";
@@ -57,7 +58,7 @@ function saveTheme(modeValue: ThemeMode): void {
     };
     window.localStorage.setItem(PREF_KEY, JSON.stringify(preferences));
   } catch {
-    // Theme changes still apply when persistence is unavailable.
+    reportPersistenceFailure();
   }
 }
 

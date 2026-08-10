@@ -9,21 +9,20 @@
 </script>
 
 <div class="preview-abilities__scroll">
-	<table class="preview-abilities__table">
-		<caption>Ability scores</caption>
+	<table class="stat-block__abilities preview-abilities__table" aria-label="Ability scores">
 		<thead>
 			<tr>
 				{#each abilities as ability}
-					<th id={`ability-${ability.key}`} scope="col">{ability.label}</th>
+					<th id={`preview-ability-${ability.key}`} scope="col">{ability.label}</th>
 				{/each}
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
 				{#each abilities as ability}
-					<td headers={`ability-${ability.key}`} aria-label={`${ability.label} ${ability.score}, ${ability.modifierText}`}>
-						<strong>{ability.score}</strong>
-						<span>{ability.modifierText}</span>
+					<td headers={`preview-ability-${ability.key}`} aria-label={`${ability.label} ${ability.score}, ${ability.modifierText}`}>
+						<span class="stat-block__ability-score">{ability.score}</span>
+						<span class="stat-block__ability-mod"> ({ability.modifierText})</span>
 					</td>
 				{/each}
 			</tr>

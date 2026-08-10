@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
-	import { selectedSection } from '$lib/state/monster-store';
+	import { sectionScrollRequest, selectedSection } from '$lib/state/monster-store';
 	import type { MonsterPreview } from '$lib/monster/preview';
 	import type { Monster } from '$lib/monster/types';
 	import StatBlockPreview from '$lib/components/preview/StatBlockPreview.svelte';
-	import { EDITOR_PANEL_ID, editorTabId } from './editor-core';
+	import { EDITOR_PANEL_ID, editorPanelId } from './editor-core';
 
 	const isBrowser = typeof window !== 'undefined';
 
@@ -17,23 +18,49 @@
 	};
 
 	let { navigation, children, previewModelFactory }: Props = $props();
-	let mobilePane = $state<'editor' | 'preview'>('editor');
 	let activeSection = $derived($selectedSection);
+	let scrollRequest = $derived($sectionScrollRequest);
 	let observedSection: string | undefined;
+	let observedScrollRequest: number | undefined;
+
+	function measureScrollOffset(): void {
+		if (!isBrowser) return;
+		const header = document.querySelector<HTMLElement>('.app-header');
+		if (!header) return;
+		const headerHeight = header.getBoundingClientRect().height;
+		document.documentElement.style.setProperty('--app-header-height', `${headerHeight}px`);
+		document.documentElement.style.setProperty('--editor-scroll-offset', `${headerHeight + 16}px`);
+	}
+
+	onMount(() => {
+		measureScrollOffset();
+		const header = document.querySelector<HTMLElement>('.app-header');
+		const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measureScrollOffset) : undefined;
+		if (observer && header) observer.observe(header);
+		window.addEventListener('resize', measureScrollOffset);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener('resize', measureScrollOffset);
+		};
+	});
 
 	$effect(() => {
 		const section = activeSection;
+		const request = scrollRequest;
 		if (observedSection === undefined) {
 			observedSection = section;
+			observedScrollRequest = request;
 			return;
 		}
-		if (observedSection === section || !isBrowser || typeof window.requestAnimationFrame !== 'function') return;
+		if ((observedSection === section && observedScrollRequest === request) || !isBrowser || typeof window.requestAnimationFrame !== 'function') return;
 		observedSection = section;
+		observedScrollRequest = request;
 		const frame = window.requestAnimationFrame(() => {
-			const panel = document.getElementById(EDITOR_PANEL_ID);
+			const panel = document.getElementById(editorPanelId(section));
 			if (!panel) return;
+			const scrollTarget = panel.querySelector<HTMLElement>('.editor-section__intro h2, .repeatable__title:is(h2), h2') ?? panel;
 			const reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			if (typeof panel.scrollIntoView === 'function') panel.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+			if (typeof scrollTarget.scrollIntoView === 'function') scrollTarget.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
 			const focused = document.activeElement;
 			const tabHasFocus = focused instanceof HTMLElement && focused.getAttribute('role') === 'tab' && focused.id.startsWith('section-tab-');
 			if (!tabHasFocus && typeof panel.focus === 'function') panel.focus({ preventScroll: true });
@@ -43,49 +70,32 @@
 </script>
 
 <section class="editor-workspace" aria-label="Monster editor">
-	<div class="editor-workspace__mobile-tabs" role="tablist" aria-label="Workspace pane">
-		<button id="workspace-tab-editor" class:active={mobilePane === 'editor'} type="button" role="tab" aria-controls="workspace-panel-editor" aria-selected={mobilePane === 'editor'} onclick={() => (mobilePane = 'editor')}>Editor</button>
-		<button id="workspace-tab-preview" class:active={mobilePane === 'preview'} type="button" role="tab" aria-controls="workspace-panel-preview" aria-selected={mobilePane === 'preview'} onclick={() => (mobilePane = 'preview')}>Preview</button>
-	</div>
 	<div class="editor-workspace__grid">
-		<div id="workspace-panel-editor" class:mobile-hidden={mobilePane !== 'editor'} class="editor-workspace__editor-pane" role="tabpanel" aria-labelledby="workspace-tab-editor">
+		<div id="workspace-panel-preview" class="editor-workspace__preview" role="region" aria-label="Live stat block preview">
+			<StatBlockPreview createModel={previewModelFactory} />
+		</div>
+		<div id="workspace-panel-editor" class="editor-workspace__editor-pane" role="region" aria-label="Editor">
 			<aside class="editor-workspace__nav">{@render navigation()}</aside>
 			<div id={EDITOR_PANEL_ID} class="editor-workspace__form" tabindex="-1">
-			<div class="editor-workspace__form-head">
-				<div><p class="section-label">02 / Edit draft</p><h1>Monster particulars</h1></div>
-				<span class="editor-workspace__status"><i></i> autosaved locally</span>
-			</div>
 			{@render children()}
 			</div>
-		</div>
-		<div id="workspace-panel-preview" class:mobile-hidden={mobilePane !== 'preview'} class="editor-workspace__preview" role="tabpanel" aria-labelledby="workspace-tab-preview" aria-label="Live stat block preview">
-			<StatBlockPreview createModel={previewModelFactory} />
 		</div>
 	</div>
 </section>
 
 <style>
-	.editor-workspace { width: 100%; }
-	.editor-workspace__mobile-tabs { display: none; }
-	.editor-workspace__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 0.62fr); align-items: start; gap: clamp(20px, 3vw, 42px); }
-	.editor-workspace__editor-pane { display: grid; grid-template-columns: minmax(190px, 0.28fr) minmax(0, 1fr); align-items: start; gap: clamp(20px, 3vw, 42px); }
-	.editor-workspace__nav { min-width: 0; position: sticky; top: 22px; }
-	.editor-workspace__form { min-width: 0; }
+	.editor-workspace { width: min(100%, 720px); min-width: 0; margin-inline: auto; overflow-x: clip; }
+  .editor-workspace__grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: clamp(32px, 5vw, 72px); min-width: 0; }
+  .editor-workspace__editor-pane { display: block; min-width: 0; }
+  .editor-workspace__nav { min-width: 0; }
+	.editor-workspace__form { min-width: 0; margin-left: 0; padding-bottom: max(0px, calc(100dvh - var(--editor-scroll-offset, calc(var(--app-header-height, 88px) + 16px)))); scroll-margin-top: var(--editor-scroll-offset, calc(var(--app-header-height, 88px) + 16px)); }
+	.editor-workspace :global(.editor-section-panel) { scroll-margin-top: var(--editor-scroll-offset, calc(var(--app-header-height, 88px) + 16px)); }
+	.editor-workspace :global(.editor-section-panel) :global(h2) { scroll-margin-top: var(--editor-scroll-offset, calc(var(--app-header-height, 88px) + 16px)); }
 	.editor-workspace__form:focus { outline: 2px solid color-mix(in srgb, var(--ring) 35%, transparent); outline-offset: 5px; }
-	.editor-workspace__form-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--border); margin-bottom: 23px; padding-bottom: 13px; }
-	.editor-workspace__form-head h1 { margin: 4px 0 0; font-family: var(--font-display); font-size: clamp(1.35rem, 2vw, 2rem); letter-spacing: -0.06em; }
-	.editor-workspace__status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-foreground); font-family: var(--font-display); font-size: 0.61rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-	.editor-workspace__status i { width: 6px; height: 6px; background: #5c9e72; }
-	.editor-workspace__preview { min-width: 0; position: sticky; top: 22px; }
-	@media (max-width: 1120px) { .editor-workspace__grid, .editor-workspace__editor-pane { gap: 20px; } .editor-workspace__grid { grid-template-columns: minmax(0, 1fr) minmax(230px, 0.48fr); } .editor-workspace__editor-pane { grid-template-columns: minmax(180px, 0.3fr) minmax(0, 1fr); } }
+  .editor-workspace__preview { min-width: 0; overflow-wrap: anywhere; }
 	@media (max-width: 820px) {
-		.editor-workspace__mobile-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-		.editor-workspace__mobile-tabs button { border: 0; border-bottom: 3px solid transparent; padding: 11px; background: transparent; color: var(--muted-foreground); cursor: pointer; font-family: var(--font-display); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-		.editor-workspace__mobile-tabs button.active { border-bottom-color: var(--accent); color: var(--foreground); }
-		.editor-workspace__grid, .editor-workspace__editor-pane { display: block; }
-		.editor-workspace__nav { position: static; margin-bottom: 28px; }
-		.editor-workspace__preview { position: static; }
-		.mobile-hidden { display: none !important; }
+    .editor-workspace__grid, .editor-workspace__editor-pane { display: block; }
+    .editor-workspace__preview { margin-bottom: 36px; }
+		.editor-workspace__nav { position: static; }
 	}
-	@media (max-width: 560px) { .editor-workspace__form-head { align-items: flex-start; flex-direction: column; } }
 </style>
