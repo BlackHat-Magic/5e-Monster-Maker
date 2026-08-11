@@ -33,10 +33,10 @@ afterEach(() => {
 });
 
 describe('app shell controls', () => {
-	it('keeps the 5E wordmark and removes draft and repository controls from the header', () => {
+	it('keeps the logo wordmark and removes draft and repository controls from the header', () => {
 		const component = mount(AppHeader, { target: document.body });
 
-		expect(document.querySelector('.wordmark__mark')?.textContent).toBe('5E');
+		expect(document.querySelector('.wordmark__mark')?.getAttribute('src')).toBe('/logo.svg');
 		expect(document.querySelector('.draft-name')).toBeNull();
 		expect(document.querySelector('a[href="https://github.com/BlackHat-Magic/5e-Monster-Maker"]')).toBeNull();
 		expect(document.querySelector('[aria-label="New"]')).not.toBeNull();

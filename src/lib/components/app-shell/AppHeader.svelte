@@ -20,7 +20,7 @@
 <header bind:this={headerElement} class="app-header">
 	<div class="app-header__identity">
 		<a class="wordmark" href="/" aria-label="5e Monster Maker home">
-			<span class="wordmark__mark">5E</span>
+			<img class="wordmark__mark" src="/logo.svg" alt="" />
 			<span class="wordmark__name">Monster Maker</span>
 		</a>
 	</div>
