@@ -21,13 +21,6 @@ D&D 5e/5.5e Monster Stat Block Maker Using a [TOML format](https://github.com/Bl
 - Render Markdown descriptions and monster tokens in the stat block preview.
 - Keep a local browser draft and theme preference without a server.
 
-### Software Stack
-
-- TypeScript, Svelte 5, and SvelteKit
-- Cloudflare-compatible output through `@sveltejs/adapter-cloudflare`
-- Vitest, Testing Library, and Playwright for verification
-- No database or backend service
-
 ## Local Development
 
 Install [Bun](https://bun.sh/), then install the locked dependencies:
@@ -122,27 +115,6 @@ TOML is the portable file format for moving a monster between browsers, machines
 - Languages and all supported trait/action sections: abilities, actions, bonus actions, reactions, legendary actions, villain actions, and mythic actions
 
 The importer accepts TOML tables matching that schema. Unknown keys are ignored with warnings, while invalid types, enum values, array shapes, or required action fields are replaced, dropped, or reported with warnings where possible. Malformed TOML, a non-table TOML root, an unreadable file, or an import larger than 5 MiB produces an error and leaves the current draft unchanged. This release does not claim import/export compatibility with Tetra-Cube, Improved Initiative, JSON, or GMBinder files.
-
-## Local Persistence and Themes
-
-The current monster draft is stored in browser `localStorage` under `monster-maker.draft`; theme mode and palette preferences are stored there as well. Nothing is uploaded, synchronized, or recoverable from another browser unless the user exports a TOML file. Clearing site data or using a different browser removes access to the local draft.
-
-Available palettes include Catppuccin, Nord, Strawberry, Gruvbox, and Rose Pine in light and dark variants, plus Dracula in dark mode. Light/dark mode can follow the system preference initially and can then be changed in the app.
-
-## Interaction Notes
-
-- The identity strip stays visible above the editor while navigating between sections. It contains the creature name, shortened name, shortened plural, and proper-noun setting.
-- The fixed icon rail contains the editor sections except Identity. On desktop it expands while the pointer is over it and closes on mouse leave even when a rail control retains focus. On mobile, tapping or clicking the toggle opens a fullscreen rail; the close control, `Escape`, or selecting a section closes it, and selection preserves the active section.
-- Every info icon owns one help popover labelled with the field name, such as “Name information”. Popovers work with hover, keyboard focus, and touch/click, and close when dismissed, when `Escape` is pressed, or when focus moves away. Proper noun has one explanation, and Add Dexterity modifier does not add a duplicate explanation.
-- Legendary, Villain, and Mythic are individual editor sections. Each section owns its classification checkbox, introduction, and action list; the Villain help card links to the related MCDM source.
-- Damage and condition defenses use canonical selectors. Canonical values are ordered first, custom values are ordered last, and `Other` reveals a field for adding a custom value.
-- Adding a damage immunity removes the matching damage resistance, so immunity takes precedence over resistance for the same value.
-- Import, export, new-draft, and error feedback appears in a dismissible toast region. Toasts and warnings are local-only UI state; they are not uploaded or persisted.
-- The shell has no Reset control, file drop zone, or current-draft panel. Use New, Import, and Export for draft lifecycle actions.
-
-## Architecture
-
-The application is a client-rendered, prerendered SvelteKit app. Svelte components provide the editor shell, section editors, and stat block preview. The monster and theme stores own browser-local state. Focused TypeScript modules normalize monster data, calculate derived statistics, render sanitized Markdown, and serialize/validate the portable TOML projection. The Cloudflare adapter packages the static output and Worker entry used by both Pages and Wrangler.
 
 ## Testing
 
