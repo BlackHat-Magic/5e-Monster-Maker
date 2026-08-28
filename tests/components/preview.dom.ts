@@ -3,7 +3,9 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it } from 'vitest';
 import StatBlockPreview from '../../src/lib/components/preview/StatBlockPreview.svelte';
+import StatBlock from '../../src/lib/components/preview/StatBlock.svelte';
 import PreviewField from '../../src/lib/components/preview/PreviewField.svelte';
+import { createPreviewModel } from '../../src/lib/monster/preview';
 import { normalizeMonster } from '../../src/lib/monster/defaults';
 import { replaceMonster, resetMonster } from '../../src/lib/state/monster-store';
 import PreviewWorkspaceTestWrapper from './PreviewWorkspaceTestWrapper.svelte';
@@ -49,8 +51,11 @@ const dragon: Monster = normalizeMonster({
 });
 
 let mounted: ReturnType<typeof mount> | undefined;
+let additionalMounted: ReturnType<typeof mount> | undefined;
 
 afterEach(() => {
+	if (additionalMounted) unmount(additionalMounted);
+	additionalMounted = undefined;
 	if (mounted) unmount(mounted);
 	mounted = undefined;
 	document.body.innerHTML = '';
@@ -58,6 +63,61 @@ afterEach(() => {
 });
 
 describe('StatBlockPreview', () => {
+	it('renders the reusable stat block presentation', () => {
+		const model = createPreviewModel(dragon);
+		mounted = mount(StatBlock, {
+			target: document.body,
+			props: { preview: model, theme: 'monster-manual-smooth', idPrefix: 'direct-preview' },
+		});
+		flushSync();
+
+		const article = document.querySelector<HTMLElement>('article.stat-block');
+		expect(article?.getAttribute('data-stat-block-theme'))
+			.toBe('monster-manual-smooth');
+		expect(article?.style.getPropertyValue('--preview-title')).toBe('#8b1e1e');
+		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#8b1e1e');
+		expect(document.querySelector('.stat-block h2')?.textContent).toContain('Ancient Red Dragon');
+		expect(document.querySelector('.stat-block__abilities')).not.toBeNull();
+		expect(document.querySelector('.preview-section h3')?.textContent).toBe('Actions');
+	});
+
+	it('keeps stat block accessibility references unique per instance', () => {
+		const model = createPreviewModel(dragon);
+		const liveTarget = document.createElement('div');
+		const exportTarget = document.createElement('div');
+		document.body.append(liveTarget, exportTarget);
+		mounted = mount(StatBlock, {
+			target: liveTarget,
+			props: { preview: model, theme: 'monster-manual-smooth', idPrefix: 'live-preview' },
+		});
+		additionalMounted = mount(StatBlock, {
+			target: exportTarget,
+			props: { preview: model, theme: 'monster-manual-smooth', idPrefix: 'export-preview' },
+		});
+		flushSync();
+
+		const articles = [...document.querySelectorAll('article.stat-block')];
+		const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
+		expect(new Set(ids).size).toBe(ids.length);
+
+		for (const article of articles) {
+			const labelledBy = article.getAttribute('aria-labelledby');
+			expect(labelledBy).not.toBeNull();
+			expect(article.querySelector(`[id="${labelledBy}"]`)).not.toBeNull();
+
+			for (const cell of article.querySelectorAll('td[headers]')) {
+				for (const headerId of cell.getAttribute('headers')?.split(/\s+/) ?? []) {
+					expect(article.querySelector(`[id="${headerId}"]`)).not.toBeNull();
+				}
+			}
+
+			for (const section of article.querySelectorAll('section[aria-labelledby]')) {
+				const headingId = section.getAttribute('aria-labelledby');
+				expect(article.querySelector(`[id="${headingId}"]`)).not.toBeNull();
+			}
+		}
+	});
+
 	it('starts with a neutral loading state before client mount work runs', () => {
 		mounted = mount(StatBlockPreview, { target: document.body, props: { monster: dragon } });
 
@@ -104,9 +164,35 @@ describe('StatBlockPreview', () => {
 		mounted = mount(StatBlockPreview, { target: document.body, props: { monster: normalizeMonster({ name: '   ' }) } });
 		flushSync();
 
-		const heading = document.querySelector('#stat-block-name');
+		const heading = document.querySelector('#live-preview-stat-block-name');
 		expect(heading?.textContent).toBe('Monster');
-		expect(document.querySelector('article.stat-block')?.getAttribute('aria-labelledby')).toBe('stat-block-name');
+		expect(document.querySelector('article.stat-block')?.getAttribute('aria-labelledby')).toBe('live-preview-stat-block-name');
+	});
+
+	it('forwards a custom ID prefix to the rendered stat block', () => {
+		mounted = mount(StatBlockPreview, {
+			target: document.body,
+			props: { monster: dragon, idPrefix: 'custom-preview' },
+		});
+		flushSync();
+
+		expect(document.querySelector('article.stat-block')?.getAttribute('aria-labelledby')).toBe('custom-preview-stat-block-name');
+		expect(document.querySelector('#custom-preview-stat-block-name')?.textContent).toContain('Ancient Red Dragon');
+	});
+
+	it('uses a custom ID prefix for preview errors', () => {
+		mounted = mount(StatBlockPreview, {
+			target: document.body,
+			props: {
+				idPrefix: 'custom-preview',
+				createModel: () => { throw new Error('custom preview failure'); },
+			},
+		});
+		flushSync();
+
+		const error = document.querySelector<HTMLElement>('.preview-error');
+		expect(error?.getAttribute('aria-labelledby')).toBe('custom-preview-error-heading');
+		expect(document.querySelector('#custom-preview-error-heading')?.textContent).toBe('Preview could not be rendered');
 	});
 
 	it('keeps block HTML from creating nested paragraphs in preview fields', () => {

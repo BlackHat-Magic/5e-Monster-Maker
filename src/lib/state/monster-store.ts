@@ -42,9 +42,9 @@ export const replacementEpoch: Readable<number> = { subscribe: replacementEpochS
 let hydrating = false;
 
 function setMonster(next: Monster): void {
-  const replacement = normalizeMonster(next);
-  monsterState.set(replacement);
-  if (!hydrating) persistMonster(replacement);
+	const replacement = normalizeMonster(next);
+	monsterState.set(replacement);
+	if (!hydrating) persistMonster(replacement);
 }
 
 export const monster: Writable<Monster> = {
@@ -60,26 +60,31 @@ export function requestSectionScroll(): void {
   sectionScrollRequest.update((request) => request + 1);
 }
 
-export function persistMonster(value: Monster): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (!hasBrowserStorage()) {
-      reportPersistenceFailure();
-      return;
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeMonster(value)));
-  } catch {
-    reportPersistenceFailure();
-  }
+export function persistMonster(value: Monster): boolean {
+	if (typeof window === "undefined") return true;
+	try {
+		if (!hasBrowserStorage()) {
+			reportPersistenceFailure();
+			return false;
+		}
+		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeMonster(value)));
+		return true;
+	} catch {
+		reportPersistenceFailure();
+		return false;
+	}
 }
 
-export function replaceMonster(next: Monster): void {
-  monster.set(next);
-  replacementEpochState.update((epoch) => epoch + 1);
+export function replaceMonster(next: Monster): boolean {
+	const replacement = normalizeMonster(next);
+	monsterState.set(replacement);
+	const persisted = hydrating || persistMonster(replacement);
+	replacementEpochState.update((epoch) => epoch + 1);
+	return persisted;
 }
 
-export function resetMonster(): void {
-  replaceMonster(createDefaultMonster());
+export function resetMonster(): boolean {
+	return replaceMonster(createDefaultMonster());
 }
 
 export function restoreMonster(): void {

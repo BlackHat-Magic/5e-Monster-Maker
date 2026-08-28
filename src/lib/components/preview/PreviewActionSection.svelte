@@ -3,10 +3,11 @@
 
 	type Props = {
 		section: PreviewSection;
+		idPrefix: string;
 	};
 
-	let { section }: Props = $props();
-	let headingId = $derived(`preview-heading-${section.key}`);
+	let { section, idPrefix }: Props = $props();
+	let headingId = $derived(`${idPrefix}-heading-${section.key}`);
 </script>
 
 <section class:preview-section--traits={section.key === 'ability'} class="preview-section" aria-labelledby={section.key === 'ability' ? undefined : headingId} aria-label={section.key === 'ability' ? 'Traits' : undefined}>

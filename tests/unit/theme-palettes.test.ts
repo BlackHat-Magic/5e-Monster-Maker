@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { paletteByKey } from "../../src/lib/theme/palettes";
+import { paletteByKey, LIGHT_THEME_KEYS, DARK_THEME_KEYS } from "../../src/lib/theme/palettes";
+import { statBlockThemeByKey } from "../../src/lib/theme/stat-block-themes";
 
 describe("theme palette metadata", () => {
   it("matches the reference CSS tokens used by the swatches", () => {
@@ -36,5 +37,18 @@ describe("theme palette metadata", () => {
       accent: "#b794f4",
       border: "#2e2454",
     });
+  });
+
+  it("maps every site palette to matching stat-block base tokens", () => {
+    for (const key of [...LIGHT_THEME_KEYS, ...DARK_THEME_KEYS]) {
+      expect(statBlockThemeByKey[key].colors).toMatchObject({
+        background: paletteByKey[key].colors.background,
+        surface: paletteByKey[key].colors.surface,
+        foreground: paletteByKey[key].colors.foreground,
+        muted: paletteByKey[key].colors.muted,
+        border: paletteByKey[key].colors.border,
+        accent: paletteByKey[key].colors.accent,
+      });
+    }
   });
 });

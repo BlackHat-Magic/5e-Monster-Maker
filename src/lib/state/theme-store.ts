@@ -1,4 +1,4 @@
-import { get, writable, type Writable } from "svelte/store";
+import { get, writable, type Readable, type Writable } from "svelte/store";
 import {
   DEFAULT_DARK_THEME,
   DEFAULT_LIGHT_THEME,
@@ -10,6 +10,7 @@ import {
   type ThemeKey,
   type ThemeMode,
 } from "../theme/palettes";
+import { isStatBlockThemeKey, type StatBlockThemeKey } from "../theme/stat-block-themes";
 import { notice, reportPersistenceFailure } from "./monster-store";
 
 const PREF_KEY = "theme.pref";
@@ -20,6 +21,10 @@ type StoredPreferences = { light: LightThemeKey; dark: DarkThemeKey };
 export const mode: Writable<ThemeMode> = writable(DEFAULT_MODE);
 export const selectedLightTheme: Writable<LightThemeKey> = writable(DEFAULT_LIGHT_THEME);
 export const selectedDarkTheme: Writable<DarkThemeKey> = writable(DEFAULT_DARK_THEME);
+const previewThemeStore: Writable<StatBlockThemeKey> = writable(DEFAULT_LIGHT_THEME);
+export const previewTheme: Readable<StatBlockThemeKey> = {
+  subscribe: (run, invalidate) => previewThemeStore.subscribe(run, invalidate),
+};
 
 // Short aliases keep component usage natural while the selected names document the values.
 export const lightTheme = selectedLightTheme;
@@ -37,6 +42,14 @@ function isThemeMode(value: unknown): value is ThemeMode {
 
 function activeThemeKey(themeMode: ThemeMode): ThemeKey {
   return themeMode === "light" ? get(selectedLightTheme) : get(selectedDarkTheme);
+}
+
+export function setPreviewTheme(key: StatBlockThemeKey): void {
+  if (isStatBlockThemeKey(key)) previewThemeStore.set(key);
+}
+
+export function syncPreviewTheme(nextMode: ThemeMode = get(mode)): void {
+  previewThemeStore.set(activeThemeKey(nextMode));
 }
 
 function storageValue(key: string): string | null {
@@ -94,6 +107,7 @@ export function toggleMode(): void {
   const nextMode: ThemeMode = get(mode) === "light" ? "dark" : "light";
   mode.set(nextMode);
   const key = activeThemeKey(nextMode);
+  syncPreviewTheme(nextMode);
   saveTheme(nextMode);
   applyTheme(nextMode, key);
 }
@@ -101,6 +115,7 @@ export function toggleMode(): void {
 export function setLightTheme(key: LightThemeKey): void {
   if (!isThemeKey(key) || paletteByKey[key].mode !== "light") return;
   selectedLightTheme.set(key);
+  if (get(mode) === "light") syncPreviewTheme();
   saveTheme(get(mode));
   if (get(mode) === "light") applyTheme("light", key);
 }
@@ -108,6 +123,7 @@ export function setLightTheme(key: LightThemeKey): void {
 export function setDarkTheme(key: DarkThemeKey): void {
   if (!isThemeKey(key) || paletteByKey[key].mode !== "dark") return;
   selectedDarkTheme.set(key);
+  if (get(mode) === "dark") syncPreviewTheme();
   saveTheme(get(mode));
   if (get(mode) === "dark") applyTheme("dark", key);
 }
@@ -136,5 +152,6 @@ export function initTheme(): void {
   }
 
   mode.set(nextMode);
+  syncPreviewTheme(nextMode);
   applyTheme(nextMode, activeThemeKey(nextMode));
 }

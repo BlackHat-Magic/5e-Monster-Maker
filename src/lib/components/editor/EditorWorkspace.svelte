@@ -4,6 +4,7 @@
 	import { sectionScrollRequest, selectedSection } from '$lib/state/monster-store';
 	import type { MonsterPreview } from '$lib/monster/preview';
 	import type { Monster } from '$lib/monster/types';
+	import PreviewThemePicker from '$lib/components/preview/PreviewThemePicker.svelte';
 	import StatBlockPreview from '$lib/components/preview/StatBlockPreview.svelte';
 	import { EDITOR_PANEL_ID, editorPanelId } from './editor-core';
 
@@ -72,6 +73,7 @@
 <section class="editor-workspace" aria-label="Monster editor">
 	<div class="editor-workspace__grid">
 		<div id="workspace-panel-preview" class="editor-workspace__preview" role="region" aria-label="Live stat block preview">
+			<PreviewThemePicker />
 			<StatBlockPreview createModel={previewModelFactory} />
 		</div>
 		<div id="workspace-panel-editor" class="editor-workspace__editor-pane" role="region" aria-label="Editor">

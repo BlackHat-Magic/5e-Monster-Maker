@@ -17,7 +17,10 @@ D&D 5e/5.5e Monster Stat Block Maker Using a [TOML format](https://github.com/Bl
 - Configure Legendary, Villain, and Mythic independently with each section's classification checkbox, introduction, and action list.
 - Work preview-first in a single-column layout with the live stat block preview above the editor at every viewport size.
 - Show Max Dex only when Add Dexterity modifier is enabled, while preserving its value when the control is hidden and restored.
-- Import and export the app's portable monster TOML format.
+- Import and export the app's portable monster TOML format plus visual PNG, WebP, AVIF, SVG, and HTML formats.
+- Keep the preview theme separate from the site theme; site theme changes synchronize the preview, with the CSS-only Monster Manual smooth theme and a textured theme also available.
+- Choose an export-dialog theme independently; it defaults to the current preview theme. WebP and AVIF controls are disabled when the browser cannot encode them.
+- Export offline-ready HTML and SVG with embedded CSS; textured Monster Manual exports also embed texture data, and visual files are cropped to the stat-block boundaries.
 - Render Markdown descriptions and monster tokens in the stat block preview.
 - Keep a local browser draft and theme preference without a server.
 
@@ -116,10 +119,12 @@ TOML is the portable file format for moving a monster between browsers, machines
 
 The importer accepts TOML tables matching that schema. Unknown keys are ignored with warnings, while invalid types, enum values, array shapes, or required action fields are replaced, dropped, or reported with warnings where possible. Malformed TOML, a non-table TOML root, an unreadable file, or an import larger than 5 MiB produces an error and leaves the current draft unchanged. This release does not claim import/export compatibility with Tetra-Cube, Improved Initiative, JSON, or GMBinder files.
 
+Visual exports are available in PNG, WebP, AVIF, SVG, and standalone HTML in addition to TOML. The preview theme is independent from the site theme, although changing the site theme synchronizes the preview. The Monster Manual smooth theme is CSS-only, while the textured theme embeds texture data. The export dialog theme is independent and defaults to the current preview theme. WebP and AVIF controls are disabled when browser encoding is unavailable. HTML and SVG embed their CSS for offline use, and textured Monster Manual HTML/SVG exports also embed texture data. Visual files are cropped to the stat-block boundaries.
+
 ## Testing
 
 - `bun run test` runs Vitest unit tests and Svelte component tests in the configured browser-like environment.
-- `bun run test:e2e` runs the Playwright browser flows. Install Chromium first with `bunx playwright install chromium`.
+- `bun run test:e2e` runs the Playwright browser flows, including real browser PNG, WebP/AVIF availability, SVG, and standalone HTML downloads with offline-content and crop checks. Install Chromium first with `bunx playwright install chromium`.
 - `bun run check` runs SvelteKit synchronization, TypeScript checking, and Svelte diagnostics.
 - `bun run build` verifies that the Cloudflare adapter output can be generated.
 

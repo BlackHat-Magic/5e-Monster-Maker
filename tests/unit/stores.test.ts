@@ -15,10 +15,12 @@ import {
   darkTheme,
   initTheme,
   mode,
+  previewTheme,
   selectedDarkTheme,
   selectedLightTheme,
   setDarkTheme,
   setLightTheme,
+  setPreviewTheme,
   toggleMode,
 } from "../../src/lib/state/theme-store";
 import { isThemeKey } from "../../src/lib/theme/palettes";
@@ -50,6 +52,7 @@ beforeEach(() => {
   resetMonster();
   notice.set(null);
   mode.set("light");
+  setPreviewTheme("catppuccin-latte");
   selectedLightTheme.set("catppuccin-latte");
   selectedDarkTheme.set("catppuccin-mocha");
   document.documentElement.className = "";
@@ -180,6 +183,51 @@ describe("theme store", () => {
     expect(document.documentElement.dataset.theme).toBe("dracula");
     expect(window.localStorage.getItem("theme.mode")).toBe("dark");
     expect(JSON.parse(window.localStorage.getItem("theme.pref") ?? "{}").dark).toBe("dracula");
+  });
+
+  it("initializes the preview theme from the active site theme", () => {
+    selectedLightTheme.set("nord-light");
+    mode.set("light");
+    initTheme();
+    expect(get(previewTheme)).toBe("nord-light");
+  });
+
+  it("syncs preview theme when the site theme changes", () => {
+    setPreviewTheme("monster-manual-textured");
+    setLightTheme("rose-pine-dawn");
+    expect(get(previewTheme)).toBe("rose-pine-dawn");
+
+    setPreviewTheme("monster-manual-smooth");
+    toggleMode();
+    expect(get(previewTheme)).toBe("catppuccin-mocha");
+  });
+
+  it("preserves a custom preview theme when changing an inactive site palette", () => {
+    setPreviewTheme("monster-manual-smooth");
+    setDarkTheme("dracula");
+    expect(get(previewTheme)).toBe("monster-manual-smooth");
+
+    toggleMode();
+    setPreviewTheme("monster-manual-textured");
+    setLightTheme("rose-pine-dawn");
+    expect(get(previewTheme)).toBe("monster-manual-textured");
+  });
+
+  it("allows preview theme changes without changing site preferences", () => {
+    const storedMode = "dark";
+    const storedPreferences = '{"light":"nord-light","dark":"dracula"}';
+    window.localStorage.setItem("theme.mode", storedMode);
+    window.localStorage.setItem("theme.pref", storedPreferences);
+
+    setPreviewTheme("monster-manual-textured");
+    expect(get(previewTheme)).toBe("monster-manual-textured");
+    expect(window.localStorage.getItem("theme.mode")).toBe(storedMode);
+    expect(window.localStorage.getItem("theme.pref")).toBe(storedPreferences);
+  });
+
+  it("rejects invalid preview theme keys", () => {
+    setPreviewTheme("invalid-preview-key" as never);
+    expect(get(previewTheme)).toBe("catppuccin-latte");
   });
 
   it("uses the system mode only when no valid mode is saved", () => {

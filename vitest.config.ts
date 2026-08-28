@@ -12,6 +12,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./tests/bun.setup.ts"],
+    css: {
+      include: /\.css\?inline$/,
+    },
     include: ["tests/**/*.{test,spec}.ts", "tests/**/*.dom.ts"],
     exclude: ["tests/e2e/**"],
 		server: {

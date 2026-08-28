@@ -1,11 +1,95 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Download, type Locator, type Page } from '@playwright/test';
 
 type BoundingBox = { x: number; y: number; width: number; height: number };
 type ScrollCall = ScrollIntoViewOptions & {
 	target: { tagName: string; id: string; className: string; text: string };
 };
+type PngChunk = { type: string; dataStart: number; length: number };
 
-async function waitForStableBoundingBox(locator: Locator): Promise<BoundingBox> {
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+
+function ascii(bytes: Uint8Array, start: number, length: number): string {
+	return String.fromCharCode(...bytes.slice(start, start + length));
+}
+
+function crc32(bytes: Uint8Array, start: number, length: number): number {
+	let crc = 0xffffffff;
+	for (let index = start; index < start + length; index += 1) {
+		crc ^= bytes[index];
+		for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+	}
+	return (crc ^ 0xffffffff) >>> 0;
+}
+
+function readUint32(bytes: Uint8Array, offset: number): number {
+	return bytes[offset] * 0x1000000 + bytes[offset + 1] * 0x10000 + bytes[offset + 2] * 0x100 + bytes[offset + 3];
+}
+
+function parsePng(bytes: Uint8Array): { chunks: PngChunk[]; width: number; height: number } {
+	if (bytes.length < PNG_SIGNATURE.length || !PNG_SIGNATURE.every((value, index) => bytes[index] === value)) {
+		throw new Error('PNG signature is invalid');
+	}
+
+	const chunks: PngChunk[] = [];
+	let offset = PNG_SIGNATURE.length;
+	while (offset < bytes.length) {
+		if (bytes.length - offset < 12) throw new Error('PNG chunk header or CRC is truncated');
+		const length = readUint32(bytes, offset);
+		const typeStart = offset + 4;
+		const typeBytes = bytes.slice(typeStart, typeStart + 4);
+		const type = String.fromCharCode(...typeBytes);
+		if (!/^[A-Za-z]{4}$/.test(type)) throw new Error(`Invalid PNG chunk type: ${type}`);
+		if (length > bytes.length - offset - 12) throw new Error(`PNG chunk ${type} exceeds the file bounds`);
+
+		const dataStart = offset + 8;
+		const crcOffset = dataStart + length;
+		const expectedCrc = readUint32(bytes, crcOffset);
+		const actualCrc = crc32(bytes, typeStart, 4 + length);
+		if (actualCrc !== expectedCrc) throw new Error(`PNG chunk ${type} has an invalid CRC-32`);
+		chunks.push({ type, dataStart, length });
+		offset = crcOffset + 4;
+
+		if (type === 'IEND') {
+			if (length !== 0 || offset !== bytes.length) throw new Error('PNG IEND must be the final empty chunk');
+			break;
+		}
+	}
+
+	if (chunks.length === 0 || chunks.at(-1)?.type !== 'IEND') throw new Error('PNG is missing its final IEND chunk');
+	if (chunks[0].type !== 'IHDR' || chunks.filter((chunk) => chunk.type === 'IHDR').length !== 1) {
+		throw new Error('PNG must begin with exactly one IHDR chunk');
+	}
+	const ihdr = chunks[0];
+	if (ihdr.length !== 13) throw new Error('PNG IHDR has an invalid length');
+	const width = readUint32(bytes, ihdr.dataStart);
+	const height = readUint32(bytes, ihdr.dataStart + 4);
+	if (width <= 0 || height <= 0) throw new Error('PNG IHDR dimensions must be positive');
+	return { chunks, width, height };
+}
+
+function assertWebp(bytes: Uint8Array): void {
+	expect(bytes.length).toBeGreaterThanOrEqual(12);
+	expect(ascii(bytes, 0, 4)).toBe('RIFF');
+	expect(ascii(bytes, 8, 4)).toBe('WEBP');
+}
+
+function assertAvif(bytes: Uint8Array): void {
+	expect(bytes.length).toBeGreaterThanOrEqual(16);
+	expect(readUint32(bytes, 0)).toBeGreaterThanOrEqual(16);
+	expect(readUint32(bytes, 0)).toBeLessThanOrEqual(bytes.length);
+	expect(ascii(bytes, 4, 4)).toBe('ftyp');
+	const brands = [ascii(bytes, 8, 4)];
+	for (let offset = 16; offset + 4 <= Math.min(readUint32(bytes, 0), bytes.length); offset += 4) brands.push(ascii(bytes, offset, 4));
+	expect(brands.some((brand) => brand === 'avif' || brand === 'avis')).toBe(true);
+}
+
+async function waitForStableBoundingBox(locator: Locator, settleFonts = false): Promise<BoundingBox> {
+	if (settleFonts) {
+		await locator.evaluate(async () => {
+			if (document.fonts?.ready) await document.fonts.ready;
+			await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+		});
+	}
 	let previous: BoundingBox | null = null;
 	await expect.poll(async () => {
 		const current = await locator.boundingBox();
@@ -19,6 +103,23 @@ async function waitForStableBoundingBox(locator: Locator): Promise<BoundingBox> 
 	}).toBe(true);
 	if (!previous) throw new Error('Expected a stable bounding box');
 	return previous;
+}
+
+async function downloadBytes(download: Download): Promise<Uint8Array> {
+	const stream = await download.createReadStream();
+	const chunks: Uint8Array[] = [];
+	let length = 0;
+	for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+		chunks.push(chunk);
+		length += chunk.byteLength;
+	}
+	const bytes = new Uint8Array(length);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	return bytes;
 }
 
 test.describe('monster authoring', () => {
@@ -55,7 +156,12 @@ test.describe('monster authoring', () => {
 		await expect(previewPane.getByRole('heading', { name: 'Cinder Warden', exact: true })).toBeVisible();
 		await expect(actionRow.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Glaive');
 		await expect(previewActions).toContainText('Melee Weapon Attack');
-		await page.evaluate(() => { document.documentElement.dataset.theme = 'catppuccin-mocha'; });
+		const themePicker = page.locator('.theme-picker');
+		await themePicker.getByRole('button', { name: 'Toggle light/dark theme', exact: true }).hover();
+		await themePicker.getByRole('tab', { name: 'Dark', exact: true }).click();
+		const darkPanel = themePicker.getByRole('tabpanel', { name: 'Dark', exact: true });
+		await darkPanel.getByRole('button', { name: 'Dracula', exact: true }).click();
+		await page.waitForFunction(() => document.documentElement.dataset.theme === 'dracula');
 		const previewRoleColors = await previewActions.locator('.preview-action').first().evaluate((element) => {
 			const actionName = element.querySelector('strong');
 			const inlineLabel = [...element.querySelectorAll('em')].find((em) => !em.querySelector('strong'));
@@ -67,13 +173,36 @@ test.describe('monster authoring', () => {
 			};
 		});
 		expect(previewRoleColors).toEqual({
-			actionName: 'rgb(148, 226, 213)',
-			inlineLabel: 'rgb(166, 227, 161)',
-			sectionHeading: 'rgb(180, 190, 254)',
+			actionName: 'rgb(189, 147, 249)',
+			inlineLabel: 'rgb(80, 250, 123)',
+			sectionHeading: 'rgb(139, 233, 253)',
 		});
 
-		const downloadPromise = page.waitForEvent('download');
+		const previewThemeSelect = page.locator('.preview-theme-picker').getByRole('combobox', { name: 'Stat block theme', exact: true });
+		const siteStateBeforePreviewTheme = await page.evaluate(() => ({
+			theme: document.documentElement.dataset.theme,
+			mode: document.documentElement.dataset.mode,
+			preference: localStorage.getItem('theme.pref'),
+		}));
+		await previewThemeSelect.selectOption('monster-manual-textured');
+		await expect(previewPane.locator('.stat-block')).toHaveAttribute('data-stat-block-theme', 'monster-manual-textured');
+		expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(siteStateBeforePreviewTheme.theme);
+		expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe(siteStateBeforePreviewTheme.mode);
+		expect(await page.evaluate(() => localStorage.getItem('theme.pref'))).toBe(siteStateBeforePreviewTheme.preference);
+
+		const siteThemePicker = page.locator('.theme-picker');
+		await siteThemePicker.getByRole('button', { name: 'Toggle light/dark theme', exact: true }).hover();
+		const draculaPanel = siteThemePicker.getByRole('tabpanel', { name: 'Dark', exact: true });
+		await draculaPanel.getByRole('button', { name: 'Catppuccin Mocha', exact: true }).click();
+		await expect(previewThemeSelect).toHaveValue('catppuccin-mocha');
+		await expect(previewPane.locator('.stat-block')).toHaveAttribute('data-stat-block-theme', 'catppuccin-mocha');
+
 		await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await expect(exportDialog).toBeVisible();
+		await exportDialog.getByRole('radio', { name: 'TOML', exact: true }).click();
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
 		const download = await downloadPromise;
 		const exportedPath = testInfo.outputPath(download.suggestedFilename());
 		await download.saveAs(exportedPath);
@@ -97,6 +226,160 @@ test.describe('monster authoring', () => {
 		await expect(nameInput).toHaveValue(preservedMonsterName);
 		await toastRegion.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
 		await expect(toastRegion).toBeHidden();
+	});
+
+	test('downloads a standalone SVG visual export from the browser path', async ({ page }) => {
+		const identity = page.getByRole('region', { name: 'Identity', exact: true });
+		await identity.getByRole('textbox', { name: 'Name', exact: true }).fill('Cinder Warden');
+		const editorPane = page.getByRole('region', { name: 'Editor', exact: true });
+		await editorPane.getByRole('tab', { name: 'Actions', exact: true }).click();
+		const actionsPanel = editorPane.getByRole('tabpanel', { name: 'Actions', exact: true });
+		await actionsPanel.getByRole('button', { name: 'Add action', exact: true }).click();
+		const actionRow = actionsPanel.getByRole('article', { name: /item 1 of 1$/ });
+		await actionRow.getByRole('textbox', { name: 'Name', exact: true }).fill('Glaive');
+		await actionRow.getByRole('textbox', { name: 'Description', exact: true }).fill('A carved blade strikes with a shower of sparks.');
+
+		const previewPane = page.getByRole('region', { name: /^(Preview|Live stat block preview)$/i });
+		const previewThemeSelect = page.locator('.preview-theme-picker').getByRole('combobox', { name: 'Stat block theme', exact: true });
+		await previewThemeSelect.selectOption('monster-manual-textured');
+		const siteState = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, mode: document.documentElement.dataset.mode }));
+		const statBlock = previewPane.locator('.stat-block');
+		await expect(statBlock).toBeVisible();
+		await expect(statBlock).toHaveAttribute('data-stat-block-theme', 'monster-manual-textured');
+		await expect(previewPane).toContainText('Cinder Warden');
+		await expect(previewPane).toContainText('A carved blade strikes with a shower of sparks.');
+
+		await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await expect(exportDialog).toBeVisible();
+		const exportThemeSelect = exportDialog.getByRole('combobox', { name: 'Export theme', exact: true });
+		await expect(exportThemeSelect).toHaveValue('monster-manual-textured');
+		await exportThemeSelect.selectOption('catppuccin-latte');
+		await expect(previewThemeSelect).toHaveValue('monster-manual-textured');
+		expect(await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, mode: document.documentElement.dataset.mode }))).toEqual(siteState);
+		await exportThemeSelect.selectOption('monster-manual-textured');
+		await exportDialog.getByRole('radio', { name: 'SVG', exact: true }).click();
+		await expect(exportDialog.getByRole('radio', { name: 'SVG', exact: true })).toHaveAttribute('aria-checked', 'true');
+		const liveBox = await waitForStableBoundingBox(statBlock, true);
+		const expectedDimensions = { width: Math.ceil(liveBox.width), height: Math.ceil(liveBox.height) };
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		const download = await downloadPromise;
+		const content = new TextDecoder().decode(await downloadBytes(download));
+		expect(download.suggestedFilename()).toBe('cinder-warden.svg');
+		const dimensions = /<svg[^>]+width="(\d+)"[^>]+height="(\d+)"[^>]+viewBox="0 0 (\d+) (\d+)"/.exec(content);
+		expect(dimensions).not.toBeNull();
+		expect(dimensions?.slice(1).map(Number)).toEqual([
+			expectedDimensions.width,
+			expectedDimensions.height,
+			expectedDimensions.width,
+			expectedDimensions.height,
+		]);
+		expect(content).toContain('<foreignObject');
+		expect(content).toContain('<style>');
+		expect(content).toContain('.stat-block__header');
+		expect(content).toContain('data:image/svg+xml');
+		expect(content).toContain('Cinder Warden');
+		expect(content).toContain('A carved blade strikes with a shower of sparks.');
+		expect(content).not.toMatch(/(?:src|href)\s*=\s*["'](?:https?:\/\/|blob:|\/)/i);
+		expect(content).not.toMatch(/url\(\s*["']?(?:https?:\/\/|blob:|\/)/i);
+		expect(content).not.toContain('srcset=');
+	});
+
+	test('downloads a standalone HTML visual export with offline assets', async ({ page }) => {
+		const identity = page.getByRole('region', { name: 'Identity', exact: true });
+		await identity.getByRole('textbox', { name: 'Name', exact: true }).fill('Offline HTML Warden');
+		const previewPane = page.getByRole('region', { name: /^(Preview|Live stat block preview)$/i });
+		const previewThemeSelect = previewPane.getByRole('combobox', { name: 'Stat block theme', exact: true });
+		await previewThemeSelect.selectOption('monster-manual-textured');
+
+		await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		const exportThemeSelect = exportDialog.getByRole('combobox', { name: 'Export theme', exact: true });
+		await expect(exportThemeSelect).toHaveValue('monster-manual-textured');
+		await exportDialog.getByRole('radio', { name: 'HTML', exact: true }).click();
+		await expect(exportDialog.getByRole('radio', { name: 'HTML', exact: true })).toHaveAttribute('aria-checked', 'true');
+		const liveBox = await waitForStableBoundingBox(previewPane.locator('.stat-block'), true);
+		const expectedDimensions = { width: Math.ceil(liveBox.width), height: Math.ceil(liveBox.height) };
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		const download = await downloadPromise;
+		const content = new TextDecoder().decode(await downloadBytes(download));
+
+		expect(download.suggestedFilename()).toBe('offline-html-warden.html');
+		expect(content).toContain('<!doctype html>');
+		expect(content).toContain('<style>');
+		expect(content).toContain('.stat-block__header');
+		expect(content).toContain('data:image/svg+xml');
+		expect(content).toContain('Offline HTML Warden');
+		const parsedHtml = await page.evaluate((markup) => {
+			const document = new DOMParser().parseFromString(markup, 'text/html');
+			const boundary = document.querySelector<HTMLElement>('.standalone-stat-block');
+			const statBlock = boundary?.querySelector<HTMLElement>('.stat-block');
+			return {
+				doctype: document.doctype?.name ?? null,
+				hasStatBlock: Boolean(statBlock),
+				monsterText: statBlock?.textContent ?? '',
+				width: boundary ? Number.parseFloat(boundary.style.width) : null,
+				height: boundary ? Number.parseFloat(boundary.style.height) : null,
+			};
+		}, content);
+		expect(parsedHtml.doctype).toBe('html');
+		expect(parsedHtml.hasStatBlock).toBe(true);
+		expect(parsedHtml.monsterText).toContain('Offline HTML Warden');
+		expect(parsedHtml.width).toBe(expectedDimensions.width);
+		expect(parsedHtml.height).toBe(expectedDimensions.height);
+		expect(content).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com|https?:\/\//i);
+		expect(content).not.toMatch(/(?:src|href)\s*=\s*["'](?:https?:\/\/|blob:|\/)/i);
+		expect(content).not.toMatch(/url\(\s*["']?(?:https?:\/\/|blob:|\/)/i);
+	});
+
+	test('downloads a PNG visual export with binary image content', async ({ page }) => {
+		const previewPane = page.getByRole('region', { name: /^(Preview|Live stat block preview)$/i });
+		const statBlock = previewPane.locator('.stat-block');
+		await expect(statBlock).toBeVisible();
+		const fileActions = page.getByRole('group', { name: 'File actions', exact: true });
+		for (const format of ['webp', 'avif'] as const) {
+			await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
+			const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+			const label = format === 'webp' ? 'WebP' : 'AVIF';
+			const formatControl = exportDialog.getByRole('radio', { name: label, exact: true });
+			if (await formatControl.isDisabled()) {
+				await expect(exportDialog.locator(`[data-export-format-help="${format}"]`)).toHaveText(`This browser cannot encode ${label}.`);
+				await expect(formatControl).toHaveAttribute('aria-describedby', `export-format-help-${format}`);
+				await exportDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+				continue;
+			}
+			await formatControl.click();
+			const downloadPromise = page.waitForEvent('download');
+			await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+			const download = await downloadPromise;
+			const bytes = await downloadBytes(download);
+			expect(download.suggestedFilename()).toBe(`new-monster.${format}`);
+			if (format === 'webp') assertWebp(bytes);
+			else assertAvif(bytes);
+		}
+
+		await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await exportDialog.getByRole('radio', { name: 'PNG', exact: true }).click();
+		await expect(exportDialog.getByRole('radio', { name: 'PNG', exact: true })).toHaveAttribute('aria-checked', 'true');
+		const liveBox = await waitForStableBoundingBox(statBlock, true);
+		const expectedDimensions = { width: Math.ceil(liveBox.width), height: Math.ceil(liveBox.height) };
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		const download = await downloadPromise;
+		const bytes = await downloadBytes(download);
+
+		expect(download.suggestedFilename()).toBe('new-monster.png');
+		expect(bytes.byteLength).toBeGreaterThan(32);
+		expect([...bytes.slice(0, PNG_SIGNATURE.length)]).toEqual(PNG_SIGNATURE);
+		const png = parsePng(bytes);
+		expect(png.width).toBe(expectedDimensions.width);
+		expect(png.height).toBe(expectedDimensions.height);
+		expect(png.chunks[0].type).toBe('IHDR');
+		expect(png.chunks.at(-1)?.type).toBe('IEND');
+		expect(new TextDecoder().decode(bytes.slice(0, 64))).not.toContain('data:');
 	});
 
 	test('keeps action section title rows scoped with live counts and accessible add controls', async ({ page }) => {
@@ -526,8 +809,12 @@ test.describe('monster authoring', () => {
 		await expect(maxDex).toBeHidden();
 		await expect(maxDexHelp).toHaveCount(0);
 
-		const downloadPromise = page.waitForEvent('download');
 		await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await expect(exportDialog).toBeVisible();
+		await exportDialog.getByRole('radio', { name: 'TOML', exact: true }).click();
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
 		const download = await downloadPromise;
 		const exportedPath = testInfo.outputPath(download.suggestedFilename());
 		await download.saveAs(exportedPath);
@@ -541,79 +828,94 @@ test.describe('monster authoring', () => {
 
 	test('collapses a coarse 600px rail after section selection', async ({ browser }) => {
 		const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', viewport: { width: 600, height: 844 }, hasTouch: true, isMobile: true });
-		const coarsePage = await context.newPage();
-		await coarsePage.goto('/');
-		await expect(coarsePage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
-		const editorPane = coarsePage.getByRole('region', { name: 'Editor', exact: true });
-		const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
-		const toggle = rail.getByRole('button').first();
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-		await expect(toggle).toBeFocused();
-		await coarsePage.keyboard.press('Tab');
-		await expect(rail.getByRole('tab', { name: 'Basics', exact: true })).toBeFocused();
-		await coarsePage.keyboard.press('Tab');
-		await expect(toggle).toBeFocused();
-		await coarsePage.keyboard.press('Shift+Tab');
-		await expect(rail.getByRole('tab', { name: 'Basics', exact: true })).toBeFocused();
-		await coarsePage.keyboard.press('Escape');
-		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		await expect(toggle).toBeFocused();
-		await toggle.click();
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('600px');
-		const openRailBox = await rail.boundingBox();
-		const headerBox = await coarsePage.getByRole('banner').boundingBox();
-		expect(openRailBox?.x).toBe(0);
-		expect(openRailBox?.y).toBeCloseTo((headerBox?.y ?? 0) + (headerBox?.height ?? 0), 0);
-		expect(openRailBox?.height).toBeCloseTo(844 - (openRailBox?.y ?? 0), 0);
-		await expect(rail.getByRole('tab', { name: 'Core Stats', exact: true })).toBeVisible();
-		expect(await coarsePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('52px');
-		await toggle.click();
-		await rail.getByRole('tab', { name: 'Core Stats', exact: true }).click();
-		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('52px');
-		const coreStatsPanel = editorPane.getByRole('tabpanel', { name: 'Core Stats', exact: true });
-		await expect(coreStatsPanel).toBeVisible();
-		const formBox = await waitForStableBoundingBox(coreStatsPanel);
-		expect(formBox?.x).toBeGreaterThanOrEqual(0);
-		expect((formBox?.x ?? 0) + (formBox?.width ?? 0)).toBeLessThanOrEqual(await coarsePage.evaluate(() => window.innerWidth));
-		expect(await coarsePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-		await context.close();
+		let coarsePage: Page | undefined;
+		try {
+			coarsePage = await context.newPage();
+			await coarsePage.goto('/');
+			await expect(coarsePage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
+			const editorPane = coarsePage.getByRole('region', { name: 'Editor', exact: true });
+			const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
+			const toggle = rail.getByRole('button').first();
+			await toggle.click();
+			await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			await expect(toggle).toBeFocused();
+			await coarsePage.keyboard.press('Tab');
+			await expect(rail.getByRole('tab', { name: 'Basics', exact: true })).toBeFocused();
+			await coarsePage.keyboard.press('Tab');
+			await expect(toggle).toBeFocused();
+			await coarsePage.keyboard.press('Shift+Tab');
+			await expect(rail.getByRole('tab', { name: 'Basics', exact: true })).toBeFocused();
+			await coarsePage.keyboard.press('Escape');
+			await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			await expect(toggle).toBeFocused();
+			await toggle.click();
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('600px');
+			const openRailBox = await rail.boundingBox();
+			const headerBox = await coarsePage.getByRole('banner').boundingBox();
+			expect(openRailBox?.x).toBe(0);
+			expect(openRailBox?.y).toBeCloseTo((headerBox?.y ?? 0) + (headerBox?.height ?? 0), 0);
+			expect(openRailBox?.height).toBeCloseTo(844 - (openRailBox?.y ?? 0), 0);
+			await expect(rail.getByRole('tab', { name: 'Core Stats', exact: true })).toBeVisible();
+			expect(await coarsePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+			await toggle.click();
+			await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('52px');
+			await toggle.click();
+			await rail.getByRole('tab', { name: 'Core Stats', exact: true }).click();
+			await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('52px');
+			const coreStatsPanel = editorPane.getByRole('tabpanel', { name: 'Core Stats', exact: true });
+			await expect(coreStatsPanel).toBeVisible();
+			const formBox = await waitForStableBoundingBox(coreStatsPanel);
+			expect(formBox?.x).toBeGreaterThanOrEqual(0);
+			expect((formBox?.x ?? 0) + (formBox?.width ?? 0)).toBeLessThanOrEqual(await coarsePage.evaluate(() => window.innerWidth));
+			expect(await coarsePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+		} finally {
+			await coarsePage?.close();
+			await context.close();
+		}
 	});
 
 	test('keeps a wide fine-pointer touch hybrid on the desktop rail', async ({ browser }) => {
 		const context = await browser.newContext({ viewport: { width: 1024, height: 844 } });
-		await context.addInitScript(() => {
-			Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => 5 });
-		});
-		const wideTouchPage = await context.newPage();
-		await wideTouchPage.goto('/');
-		await expect(wideTouchPage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
-		const editorPane = wideTouchPage.getByRole('region', { name: 'Editor', exact: true });
-		const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
-		await expect(rail.getByRole('button')).toHaveCount(0);
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('58px');
-		await expect(editorPane.locator('.editor-workspace__form')).toHaveCSS('margin-left', '0px');
-		await rail.hover();
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('248px');
-		await context.close();
+		let wideTouchPage: Page | undefined;
+		try {
+			await context.addInitScript(() => {
+				Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => 5 });
+			});
+			wideTouchPage = await context.newPage();
+			await wideTouchPage.goto('/');
+			await expect(wideTouchPage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
+			const editorPane = wideTouchPage.getByRole('region', { name: 'Editor', exact: true });
+			const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
+			await expect(rail.getByRole('button')).toHaveCount(0);
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('58px');
+			await expect(editorPane.locator('.editor-workspace__form')).toHaveCSS('margin-left', '0px');
+			await rail.hover();
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('248px');
+		} finally {
+			await wideTouchPage?.close();
+			await context.close();
+		}
 	});
 
 	test('removes the rail toggle from a wide coarse layout', async ({ browser }) => {
 		const context = await browser.newContext({ viewport: { width: 1024, height: 844 }, hasTouch: true, isMobile: true });
-		const wideCoarsePage = await context.newPage();
-		await wideCoarsePage.goto('/');
-		await expect(wideCoarsePage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
-		const editorPane = wideCoarsePage.getByRole('region', { name: 'Editor', exact: true });
-		const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
+		let wideCoarsePage: Page | undefined;
+		try {
+			wideCoarsePage = await context.newPage();
+			await wideCoarsePage.goto('/');
+			await expect(wideCoarsePage.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
+			const editorPane = wideCoarsePage.getByRole('region', { name: 'Editor', exact: true });
+			const rail = editorPane.getByRole('navigation', { name: 'Monster sections', exact: true });
 
-		await expect(rail.getByRole('button')).toHaveCount(0);
-		await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('58px');
+			await expect(rail.getByRole('button')).toHaveCount(0);
+			await expect.poll(() => rail.evaluate((element) => getComputedStyle(element).width)).toBe('58px');
 
-		await context.close();
+		} finally {
+			await wideCoarsePage?.close();
+			await context.close();
+		}
 	});
 
 	test('scrolls the active section heading comfortably below the header', async ({ page }) => {
