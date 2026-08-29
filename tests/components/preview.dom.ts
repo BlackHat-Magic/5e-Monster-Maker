@@ -77,7 +77,11 @@ describe('StatBlockPreview', () => {
 		expect(article?.style.getPropertyValue('--preview-title')).toBe('#922610');
 		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
 		expect(article?.classList.contains('stat-block--two-column')).toBe(false);
-		expect(article?.querySelector('.stat-block__body')).not.toBeNull();
+		expect(article?.querySelector('.stat-block__body')).toBeNull();
+		expect(article?.querySelector(':scope > .stat-block__fields')).not.toBeNull();
+		expect(article?.querySelector(':scope > .stat-block__challenge')).not.toBeNull();
+		expect(article?.querySelector(':scope > .stat-block__rule--thin')).not.toBeNull();
+		expect(article?.querySelector(':scope > .preview-section')).not.toBeNull();
 		expect(document.querySelector('.stat-block h2')?.textContent).toContain('Ancient Red Dragon');
 		expect(document.querySelector('.stat-block__abilities')).not.toBeNull();
 		expect(document.querySelector('.preview-section h3')?.textContent).toBe('Actions');
@@ -96,6 +100,7 @@ describe('StatBlockPreview', () => {
 		expect(article).not.toBeNull();
 		expect(article?.classList.contains('stat-block--two-column')).toBe(true);
 		expect(body).not.toBeNull();
+		expect(article?.querySelector(':scope > .stat-block__body')).toBe(body);
 		expect(body?.querySelector('.stat-block__fields')).not.toBeNull();
 		expect(body?.querySelector('.stat-block__challenge')).not.toBeNull();
 		expect(body?.querySelector('.stat-block__rule--thin')).not.toBeNull();
