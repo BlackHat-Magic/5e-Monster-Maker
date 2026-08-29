@@ -208,18 +208,24 @@ export function isStatBlockThemeKey(value: unknown): value is StatBlockThemeKey 
 const textureSvg =
   '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
   '<defs>' +
-  '<radialGradient id="paper-wash" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#FFF8E9"/><stop offset="0.7" stop-color="#FDF1DC"/><stop offset="1" stop-color="#D9B982"/></radialGradient>' +
-  '<filter id="paper-noise" x="-10%" y="-10%" width="120%" height="120%">' +
-  '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.17" numOctaves="4" seed="17" stitchTiles="stitch" result="noise"/>' +
-  '<feColorMatrix in="noise" type="saturate" values="0" result="grain"/>' +
-  '<feComponentTransfer in="grain"><feFuncA type="table" tableValues="0 0.3"/></feComponentTransfer>' +
+  '<radialGradient id="paper-wash" cx="48%" cy="42%" r="78%"><stop offset="0" stop-color="#FFF9EC"/><stop offset="0.58" stop-color="#FDF1DC"/><stop offset="1" stop-color="#D0AD72"/></radialGradient>' +
+  '<filter id="paper-grain" x="-10%" y="-10%" width="120%" height="120%">' +
+  '<feTurbulence type="fractalNoise" baseFrequency="0.018 0.12" numOctaves="5" seed="17" stitchTiles="stitch" result="noise"/>' +
+  '<feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.52 0 0 0 0 0.37 0 0 0 0 0.18 0 0 0 0.42 0" result="brown-grain"/>' +
+  '<feBlend in="SourceGraphic" in2="brown-grain" mode="multiply"/>' +
   '</filter>' +
+  '<pattern id="fiber-specks" width="67" height="61" patternUnits="userSpaceOnUse">' +
+  '<circle cx="7" cy="11" r="1.4" fill="#8B6B45" opacity="0.2"/><circle cx="28" cy="6" r="0.9" fill="#6F4F2D" opacity="0.16"/>' +
+  '<circle cx="48" cy="21" r="1.1" fill="#9A754A" opacity="0.18"/><circle cx="18" cy="38" r="0.8" fill="#6F4F2D" opacity="0.2"/>' +
+  '<circle cx="58" cy="49" r="1.5" fill="#8B6B45" opacity="0.14"/><path d="M2 53l15-3M36 34l12-2M49 2l11 4" stroke="#8B6B45" stroke-width="0.8" opacity="0.14"/>' +
+  '</pattern>' +
   '</defs>' +
   '<rect width="400" height="400" fill="#FDF1DC"/>' +
-  '<rect width="400" height="400" fill="url(#paper-wash)" opacity="0.92"/>' +
-  '<rect width="400" height="400" fill="#8B6B45" opacity="0.34" filter="url(#paper-noise)"/>' +
-  '<path d="M-20 72 C95 42 160 98 270 65 S430 52 425 118 M-35 305 C80 275 150 338 265 300 S430 295 430 350" fill="none" stroke="#9A754A" stroke-width="3" opacity="0.12"/>' +
-  '<path d="M35 -15 C70 75 20 155 55 250 S85 390 45 420 M350 -20 C315 60 380 150 345 235 S318 370 365 420" fill="none" stroke="#6F4F2D" stroke-width="2" opacity="0.1"/>' +
+  '<rect width="400" height="400" fill="url(#paper-wash)" filter="url(#paper-grain)"/>' +
+  '<rect width="400" height="400" fill="url(#fiber-specks)" opacity="0.9"/>' +
+  '<path d="M-25 74 C76 34 145 112 254 73 S432 46 426 123 M-40 304 C72 265 152 346 268 304 S433 282 436 360" fill="none" stroke="#8B6B45" stroke-width="4" opacity="0.15"/>' +
+  '<path d="M27 -20 C75 67 19 158 58 253 S88 390 39 425 M362 -25 C307 67 382 146 343 240 S315 373 370 426" fill="none" stroke="#6F4F2D" stroke-width="3" opacity="0.12"/>' +
+  '<path d="M-18 180 C80 153 133 191 218 166 S359 144 420 183 M-20 225 C72 202 140 240 226 215 S352 201 420 228" fill="none" stroke="#B08A5A" stroke-width="2" opacity="0.09"/>' +
   '</svg>';
 
 const barSvg =
