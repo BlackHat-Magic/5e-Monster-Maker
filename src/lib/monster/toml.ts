@@ -22,6 +22,7 @@ const TOP_LEVEL_KEYS = [
   "villain_description",
   "is_mythic",
   "mythic_description",
+  "two_column",
   "basics",
   "stats",
   "proficiencies",
@@ -316,7 +317,7 @@ function collectInvalidWarnings(source: RecordLike): TomlWarning[] {
     "villain_description",
     "mythic_description",
   ]) warnString(warnings, source, key, key);
-  for (const key of ["proper_noun", "is_legendary", "is_villain", "is_mythic"]) warnBoolean(warnings, source, key, key);
+  for (const key of ["proper_noun", "two_column", "is_legendary", "is_villain", "is_mythic"]) warnBoolean(warnings, source, key, key);
 
   const basics = source.basics;
   if (hasOwn(source, "basics")) {
@@ -394,7 +395,7 @@ function exportProjection(monster: Monster): RecordLike {
   const normalized = normalizeMonster(monster);
   const output = createRecord();
 
-  addFields(output, normalized as RecordLike, TOP_LEVEL_KEYS.slice(0, 10));
+  addFields(output, normalized as RecordLike, TOP_LEVEL_KEYS.slice(0, 11));
 
   const basics = createRecord();
   addFields(basics, (normalized.basics ?? {}) as RecordLike, BASICS_KEYS);

@@ -121,6 +121,7 @@ export interface Monster {
   shortened_name?: string;
   shortened_plural?: string;
   proper_noun?: boolean;
+  two_column?: boolean;
 
   is_legendary?: boolean;
   legendary_description?: string;
