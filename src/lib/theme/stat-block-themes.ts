@@ -273,8 +273,10 @@ export function statBlockThemeStyle(key: StatBlockThemeKey): string {
   ];
 
   if (isMonsterManual) {
-    declarations.push(`--stat-block-bar: ${texture ? `url("${barDataUri()}")` : "linear-gradient(#E69A28, #E69A28)"}`);
+    declarations.push(
+      `--stat-block-bar: ${texture ? `url("/statblockbar.jpg"), url("${barDataUri()}")` : "linear-gradient(#E69A28, #E69A28)"}`,
+    );
   }
-  if (texture) declarations.push(`background-image: url("${textureDataUri()}")`);
+  if (texture) declarations.push(`background-image: url("/statblockparch.jpg"), url("${textureDataUri()}")`);
   return `${declarations.join("; ")};`;
 }

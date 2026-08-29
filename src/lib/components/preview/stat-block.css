@@ -1,4 +1,4 @@
-.stat-block { width: 100%; min-width: 0; border: 1px solid var(--border); border-top: 3px solid var(--preview-rule); border-radius: 4px !important; background: var(--card); padding: .55em 1.1em .5em; color: var(--foreground); font-family: var(--font-copy); overflow-wrap: break-word; box-shadow: none; }
+.stat-block { width: min(100%, 400px); min-width: 0; margin-inline: auto; border: 1px solid var(--border); border-top: 3px solid var(--preview-rule); border-radius: 4px !important; background: var(--card); padding: .55em 1.1em .5em; color: var(--foreground); font-family: var(--font-copy); overflow-wrap: break-word; box-shadow: none; }
 .stat-block[data-stat-block-theme="monster-manual-textured"] { background-color: var(--card); background-repeat: no-repeat; background-size: cover; background-position: center; }
 .stat-block :is(h1, h2, h3, h4, h5, h6) { margin: .75em 0 .3em; color: var(--preview-title); font-family: var(--font-display); line-height: 1.15; }
 .stat-block :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: .1em; }

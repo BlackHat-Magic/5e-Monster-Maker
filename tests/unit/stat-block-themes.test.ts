@@ -67,10 +67,11 @@ describe("stat-block themes", () => {
     expect(svg).toContain('id="paper-wash"');
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("parsererror")).toBeNull();
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("background-image");
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain('url("/statblockparch.jpg")');
     expect(statBlockThemeStyle("monster-manual-smooth")).not.toContain("background-image");
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-copy: \"Noto Sans\"");
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-display: \"Libre Baskerville\"");
-    expect(statBlockThemeStyle("monster-manual-textured")).toContain("--stat-block-bar: url");
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain('--stat-block-bar: url("/statblockbar.jpg")');
   });
 
   it("serializes exact CSS declarations for every stat-block theme", () => {
