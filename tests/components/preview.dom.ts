@@ -74,8 +74,8 @@ describe('StatBlockPreview', () => {
 		const article = document.querySelector<HTMLElement>('article.stat-block');
 		expect(article?.getAttribute('data-stat-block-theme'))
 			.toBe('monster-manual-smooth');
-		expect(article?.style.getPropertyValue('--preview-title')).toBe('#8b1e1e');
-		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#8b1e1e');
+		expect(article?.style.getPropertyValue('--preview-title')).toBe('#922610');
+		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
 		expect(document.querySelector('.stat-block h2')?.textContent).toContain('Ancient Red Dragon');
 		expect(document.querySelector('.stat-block__abilities')).not.toBeNull();
 		expect(document.querySelector('.preview-section h3')?.textContent).toBe('Actions');

@@ -60,11 +60,12 @@ describe("monster exports", () => {
   });
 
   it("serializes the stat-block font fallback variables exactly", () => {
-    const fontStack = '"Noto Serif", "Merriweather", Georgia, "Times New Roman", serif';
+    const copyFontStack = '"Noto Sans", "Myriad Pro", Calibri, Helvetica, Arial, sans-serif';
+    const displayFontStack = '"Libre Baskerville", "Lora", "Calisto MT", "Bookman Old Style", Bookman, Georgia, serif';
     const style = statBlockThemeStyle("monster-manual-smooth");
 
-    expect(style).toContain(`--font-copy: ${fontStack};`);
-    expect(style).toContain(`--font-display: ${fontStack};`);
+    expect(style).toContain(`--font-copy: ${copyFontStack};`);
+    expect(style).toContain(`--font-display: ${displayFontStack};`);
   });
 
   it("returns false when canvas detection has no document or canvas", () => {
@@ -99,7 +100,7 @@ describe("monster exports", () => {
     expect(boundary?.getAttribute("style")).toContain("width: 320px;");
     expect(boundary?.getAttribute("style")).toContain("height: 180px;");
     expect(root?.getAttribute("class")).toContain("stat-block");
-    expect(root?.getAttribute("style")).toContain("--bg: #f5eddb;");
+    expect(root?.getAttribute("style")).toContain("--bg: #FDF1DC;");
     expect(html).toContain("*, *::before, *::after { box-sizing: border-box; border: 0 solid; border-radius: 0 !important; margin: 0; padding: 0; }");
     expect(html).toContain("body { margin: 0; padding: 0; }");
     expect(html).toContain(".stat-block { line-height: 1.5; }");
@@ -141,10 +142,10 @@ describe("monster exports", () => {
     expect(svg).toContain(".stat-block { color: red; }");
     expect(svg).toContain("--font-copy:");
     expect(svg).toContain("--font-display:");
-    expect(svg).toContain("--bg: #f5eddb;");
+    expect(svg).toContain("--bg: #FDF1DC;");
     expect(svg).toContain('data-preserved="yes"');
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector(".stat-block")?.getAttribute("style")).toContain(
-      "--bg: #f5eddb;",
+      "--bg: #FDF1DC;",
     );
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("parsererror")).toBeNull();
   });

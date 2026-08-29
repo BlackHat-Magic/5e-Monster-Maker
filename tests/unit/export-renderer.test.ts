@@ -395,7 +395,7 @@ describe("browser visual exports", () => {
     expect(result.mime).toBe("text/html");
     expect(result.content).toContain("<!doctype html>");
     expect(result.content).toContain("HTML Test");
-    expect(result.content).toContain("--bg: #f5eddb;");
+		expect(result.content).toContain("--bg: #FDF1DC;");
     expect(result.content).not.toContain("catppuccin-mocha");
   });
 

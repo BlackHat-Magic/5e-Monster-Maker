@@ -45,6 +45,9 @@ describe("stat-block themes", () => {
     const textured = statBlockThemeByKey["monster-manual-textured"];
     expect(smooth.colors.background).toBe(textured.colors.background);
     expect(smooth.colors.accent).toBe(textured.colors.accent);
+    expect(smooth.colors.background).toBe("#FDF1DC");
+    expect(smooth.colors.title).toBe("#922610");
+    expect(smooth.colors.label).toBe("#7A200D");
     expect(smooth.colors.background).toMatch(/^#/);
     expect(smooth.colors.accent).toMatch(/^#/);
   });
@@ -60,10 +63,14 @@ describe("stat-block themes", () => {
     expect(svg).toMatch(/^<svg[\s>]/);
     expect(svg).toContain("<feTurbulence");
     expect(svg).toContain('seed="17"');
-    expect(svg).toContain('fill="#f5eddb" opacity="0.22"');
+    expect(svg).toContain('fill="#FDF1DC"');
+    expect(svg).toContain('id="paper-wash"');
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("parsererror")).toBeNull();
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("background-image");
     expect(statBlockThemeStyle("monster-manual-smooth")).not.toContain("background-image");
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-copy: \"Noto Sans\"");
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-display: \"Libre Baskerville\"");
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain("--stat-block-bar: url");
   });
 
   it("serializes exact CSS declarations for every stat-block theme", () => {

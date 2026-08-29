@@ -142,19 +142,19 @@ const sitePreviewColors: Record<ThemeKey, PreviewColors> = {
 };
 
 const monsterManualColors: StatBlockTheme["colors"] = {
-  background: "#f5eddb",
-  surface: "#fffaf0",
-  foreground: "#2e2118",
-  muted: "#eadfca",
-  mutedForeground: "#6e5a45",
-  border: "#b99f7c",
-  accent: "#8b1e1e",
-  title: "#8b1e1e",
-  rule: "#8b1e1e",
-  label: "#8b1e1e",
-  emphasis: "#5b4636",
-  actionName: "#8b1e1e",
-  previewMuted: "#6e5a45",
+  background: "#FDF1DC",
+  surface: "#FDF1DC",
+  foreground: "#000000",
+  muted: "#F5E6C8",
+  mutedForeground: "#000000",
+  border: "#000000",
+  accent: "#922610",
+  title: "#922610",
+  rule: "#922610",
+  label: "#7A200D",
+  emphasis: "#000000",
+  actionName: "#000000",
+  previewMuted: "#922610",
 };
 
 const siteTheme = (key: ThemeKey): StatBlockTheme => {
@@ -206,20 +206,47 @@ export function isStatBlockThemeKey(value: unknown): value is StatBlockThemeKey 
 }
 
 const textureSvg =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">' +
-  '<filter id="paper-noise"><feTurbulence type="fractalNoise" baseFrequency="0.78" numOctaves="3" seed="17" stitchTiles="stitch"/></filter>' +
-  '<rect width="100%" height="100%" fill="#f5eddb" opacity="0.22" filter="url(#paper-noise)"/>' +
-  "</svg>";
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
+  '<defs>' +
+  '<radialGradient id="paper-wash" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#FFF8E9"/><stop offset="0.7" stop-color="#FDF1DC"/><stop offset="1" stop-color="#D9B982"/></radialGradient>' +
+  '<filter id="paper-noise" x="-10%" y="-10%" width="120%" height="120%">' +
+  '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.17" numOctaves="4" seed="17" stitchTiles="stitch" result="noise"/>' +
+  '<feColorMatrix in="noise" type="saturate" values="0" result="grain"/>' +
+  '<feComponentTransfer in="grain"><feFuncA type="table" tableValues="0 0.3"/></feComponentTransfer>' +
+  '</filter>' +
+  '</defs>' +
+  '<rect width="400" height="400" fill="#FDF1DC"/>' +
+  '<rect width="400" height="400" fill="url(#paper-wash)" opacity="0.92"/>' +
+  '<rect width="400" height="400" fill="#8B6B45" opacity="0.34" filter="url(#paper-noise)"/>' +
+  '<path d="M-20 72 C95 42 160 98 270 65 S430 52 425 118 M-35 305 C80 275 150 338 265 300 S430 295 430 350" fill="none" stroke="#9A754A" stroke-width="3" opacity="0.12"/>' +
+  '<path d="M35 -15 C70 75 20 155 55 250 S85 390 45 420 M350 -20 C315 60 380 150 345 235 S318 370 365 420" fill="none" stroke="#6F4F2D" stroke-width="2" opacity="0.1"/>' +
+  '</svg>';
+
+const barSvg =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="5" viewBox="0 0 400 5">' +
+  '<defs><filter id="bar-noise"><feTurbulence type="fractalNoise" baseFrequency="0.04 0.8" numOctaves="2" seed="23" stitchTiles="stitch"/></filter></defs>' +
+  '<rect width="400" height="5" fill="#E69A28"/>' +
+  '<rect width="400" height="5" fill="#7A200D" opacity="0.22" filter="url(#bar-noise)"/>' +
+  '</svg>';
 
 export function textureDataUri(): string {
   return `data:image/svg+xml,${encodeURIComponent(textureSvg)}`;
 }
 
+function barDataUri(): string {
+  return `data:image/svg+xml,${encodeURIComponent(barSvg)}`;
+}
+
 export function statBlockThemeStyle(key: StatBlockThemeKey): string {
   const { colors, texture } = statBlockThemeByKey[key];
+  const isMonsterManual = key === "monster-manual-smooth" || key === "monster-manual-textured";
   const declarations = [
-    '--font-copy: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif',
-    '--font-display: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif',
+    isMonsterManual
+      ? '--font-copy: "Noto Sans", "Myriad Pro", Calibri, Helvetica, Arial, sans-serif'
+      : '--font-copy: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif',
+    isMonsterManual
+      ? '--font-display: "Libre Baskerville", "Lora", "Calisto MT", "Bookman Old Style", Bookman, Georgia, serif'
+      : '--font-display: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif',
     `--bg: ${colors.background}`,
     `--card: ${colors.surface}`,
     `--foreground: ${colors.foreground}`,
@@ -239,6 +266,9 @@ export function statBlockThemeStyle(key: StatBlockThemeKey): string {
     "--quote-border: var(--accent)",
   ];
 
+  if (isMonsterManual) {
+    declarations.push(`--stat-block-bar: ${texture ? `url("${barDataUri()}")` : "linear-gradient(#E69A28, #E69A28)"}`);
+  }
   if (texture) declarations.push(`background-image: url("${textureDataUri()}")`);
   return `${declarations.join("; ")};`;
 }
