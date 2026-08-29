@@ -21,6 +21,10 @@
 	function updateBasics(key: BasicsKey, value: string): void {
 		monster.update((current) => ({ ...current, basics: { ...current.basics, [key]: value } }));
 	}
+
+	function updateTwoColumn(event: Event): void {
+		monster.update((current) => ({ ...current, two_column: (event.currentTarget as HTMLInputElement).checked }));
+	}
 </script>
 
 	<section class="editor-section" aria-labelledby="basics-heading">
@@ -51,6 +55,9 @@
 				<input class="editor-control" id="monster-alignment" type="text" value={$monster.basics?.alignment ?? ''} oninput={(event) => updateBasics('alignment', valueOf(event))} aria-describedby={control.describedBy} aria-invalid={control.invalid} />
 			{/snippet}
 		</Field>
+	</div>
+	<div class="editor-check-card editor-check-card--inline">
+		<label class="editor-check" for="monster-two-column"><input id="monster-two-column" type="checkbox" checked={$monster.two_column ?? false} onchange={updateTwoColumn} /><span>Two-column stat block</span></label>
 	</div>
 	<Field id="monster-flavor" label="Flavor text" help="A compact opening description for the generated stat block.">
 		{#snippet children(control)}
