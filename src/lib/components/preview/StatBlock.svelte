@@ -9,16 +9,17 @@
 		preview: MonsterPreview;
 		theme: StatBlockThemeKey;
 		idPrefix: string;
+		twoColumn?: boolean;
 	};
 
-	let { preview, theme, idPrefix }: Props = $props();
+	let { preview, theme, idPrefix, twoColumn = false }: Props = $props();
 
 	function inlineHtml(value: { html: string }): string {
 		return value.html.replace(/^<p>([\s\S]*)<\/p>\s*$/, '$1');
 	}
 </script>
 
-<article class="stat-block" aria-labelledby={`${idPrefix}-stat-block-name`} data-stat-block-theme={theme} style={statBlockThemeStyle(theme)}>
+<article class="stat-block" class:stat-block--two-column={twoColumn} aria-labelledby={`${idPrefix}-stat-block-name`} data-stat-block-theme={theme} style={statBlockThemeStyle(theme)}>
 	<header class="stat-block__header">
 		<h2 id={`${idPrefix}-stat-block-name`}>{@html inlineHtml(preview.name)}</h2>
 		{#if preview.meta}
@@ -43,19 +44,21 @@
 
 	<div class="stat-block__rule" aria-hidden="true"></div>
 
-	<section class="stat-block__fields" aria-label="Additional statistics">
-		{#each preview.fields as field}
-			<PreviewField {field} />
+	<div class="stat-block__body">
+		<section class="stat-block__fields" aria-label="Additional statistics">
+			{#each preview.fields as field}
+				<PreviewField {field} />
+			{/each}
+		</section>
+
+		<div class="stat-block__challenge" aria-label="Challenge and proficiency bonus">
+			<span>Challenge {preview.challenge.challenge} ({preview.challenge.xpText} XP)</span>
+			<span class="stat-block__prof-bonus"><strong>Proficiency Bonus</strong> {preview.challenge.proficiencyBonusText}</span>
+		</div>
+		<div class="stat-block__rule stat-block__rule--thin" aria-hidden="true"></div>
+
+		{#each preview.sections as section (section.key)}
+			<PreviewActionSection {section} {idPrefix} />
 		{/each}
-	</section>
-
-	<div class="stat-block__challenge" aria-label="Challenge and proficiency bonus">
-		<span>Challenge {preview.challenge.challenge} ({preview.challenge.xpText} XP)</span>
-		<span class="stat-block__prof-bonus"><strong>Proficiency Bonus</strong> {preview.challenge.proficiencyBonusText}</span>
 	</div>
-	<div class="stat-block__rule stat-block__rule--thin" aria-hidden="true"></div>
-
-	{#each preview.sections as section (section.key)}
-		<PreviewActionSection {section} {idPrefix} />
-	{/each}
 </article>

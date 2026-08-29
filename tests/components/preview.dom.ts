@@ -76,9 +76,32 @@ describe('StatBlockPreview', () => {
 			.toBe('monster-manual-smooth');
 		expect(article?.style.getPropertyValue('--preview-title')).toBe('#922610');
 		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
+		expect(article?.classList.contains('stat-block--two-column')).toBe(false);
+		expect(article?.querySelector('.stat-block__body')).not.toBeNull();
 		expect(document.querySelector('.stat-block h2')?.textContent).toContain('Ancient Red Dragon');
 		expect(document.querySelector('.stat-block__abilities')).not.toBeNull();
 		expect(document.querySelector('.preview-section h3')?.textContent).toBe('Actions');
+	});
+
+	it('marks two-column stat blocks and wraps only lower-flow content', () => {
+		const model = createPreviewModel(dragon);
+		mounted = mount(StatBlock, {
+			target: document.body,
+			props: { preview: model, theme: 'monster-manual-smooth', idPrefix: 'two-column-preview', twoColumn: true },
+		});
+		flushSync();
+
+		const article = document.querySelector<HTMLElement>('article.stat-block');
+		const body = article?.querySelector<HTMLElement>('.stat-block__body');
+		expect(article).not.toBeNull();
+		expect(article?.classList.contains('stat-block--two-column')).toBe(true);
+		expect(body).not.toBeNull();
+		expect(body?.querySelector('.stat-block__fields')).not.toBeNull();
+		expect(body?.querySelector('.stat-block__challenge')).not.toBeNull();
+		expect(body?.querySelector('.stat-block__rule--thin')).not.toBeNull();
+		expect(body?.querySelector('.preview-section')).not.toBeNull();
+		expect(body?.querySelector('.stat-block__abilities')).toBeNull();
+		expect(body?.previousElementSibling?.classList.contains('stat-block__rule')).toBe(true);
 	});
 
 	it('keeps stat block accessibility references unique per instance', () => {
@@ -158,6 +181,13 @@ describe('StatBlockPreview', () => {
 			.find((element) => element.textContent?.includes('Claw'));
 		expect(emphasizedName?.textContent).toContain('Claw');
 		expect(emphasizedName?.textContent).toContain('Recharge 5–6');
+	});
+
+	it('threads the persisted two-column preference to the live preview', () => {
+		mounted = mount(StatBlockPreview, { target: document.body, props: { monster: { ...dragon, two_column: true } } });
+		flushSync();
+
+		expect(document.querySelector('article.stat-block')?.classList.contains('stat-block--two-column')).toBe(true);
 	});
 
 	it('falls back to a non-empty accessible name', () => {

@@ -521,6 +521,7 @@ export async function renderVisualExport({
 				preview: createPreviewModel(monster),
 				theme,
 				idPrefix: nextExportIdPrefix(),
+				twoColumn: monster.two_column ?? false,
 			},
 		});
 		flushSync();

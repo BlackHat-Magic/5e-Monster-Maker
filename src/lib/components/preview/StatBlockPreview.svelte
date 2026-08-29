@@ -55,5 +55,5 @@
 		<p>The editor is still available. Continue editing and try the preview again.</p>
 	</section>
 	{:else if preview}
-	<StatBlock preview={preview} theme={$previewTheme} {idPrefix} />
+	<StatBlock preview={preview} theme={$previewTheme} {idPrefix} twoColumn={currentMonster.two_column ?? false} />
 {/if}
