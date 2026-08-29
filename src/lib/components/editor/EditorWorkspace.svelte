@@ -73,8 +73,8 @@
 <section class="editor-workspace" aria-label="Monster editor">
 	<div class="editor-workspace__grid">
 		<div id="workspace-panel-preview" class="editor-workspace__preview" role="region" aria-label="Live stat block preview">
-			<PreviewThemePicker />
 			<StatBlockPreview createModel={previewModelFactory} />
+			<PreviewThemePicker />
 		</div>
 		<div id="workspace-panel-editor" class="editor-workspace__editor-pane" role="region" aria-label="Editor">
 			<aside class="editor-workspace__nav">{@render navigation()}</aside>

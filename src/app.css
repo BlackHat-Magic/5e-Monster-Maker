@@ -210,12 +210,11 @@ html.theme-anim *, html.theme-anim ::before, html.theme-anim ::after { transitio
 .preview-error h2 { margin: 9px 0 0; color: var(--foreground); font-family: var(--font-display); font-size: clamp(1.45rem, 3vw, 2.25rem); line-height: 0.98; letter-spacing: -0.07em; }
  .preview-error p { margin: 15px 0 0; color: var(--muted-foreground); font-size: 0.82rem; line-height: 1.55; }
 .preview-error p:last-child { border-top: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); padding-top: 12px; }
-.preview-toolbar { border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--card); padding: 10px 12px; color: var(--foreground); }
+.preview-toolbar { margin-top: 18px; border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--card); padding: 8px 10px; color: var(--foreground); }
 .preview-theme-picker { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 7px 14px; }
 .preview-theme-picker label { color: var(--foreground); font-family: var(--font-display); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; }
-.preview-theme-picker select { width: min(100%, 280px); min-width: 0; height: 34px; border: 1px solid var(--border); background: var(--muted); padding: 0 9px; color: var(--foreground); font-size: 0.8rem; }
+.preview-theme-picker select { width: min(100%, 240px); min-width: 0; height: 30px; border: 1px solid var(--border); background: var(--muted); padding: 0 8px; color: var(--foreground); font-size: 0.76rem; }
 .preview-theme-picker select:focus { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--ring) 35%, transparent); outline-offset: 0; }
-.preview-theme-picker__help { grid-column: 1 / -1; margin: 0; color: var(--muted-foreground); font-size: 0.7rem; line-height: 1.4; }
 
 @media (max-width: 920px) {
 	.app-header { align-items: flex-start; flex-direction: column; }

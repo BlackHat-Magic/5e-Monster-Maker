@@ -52,7 +52,6 @@
 			id={idPrefix}
 			value={$previewTheme}
 			onchange={handleChange}
-			aria-describedby={`${idPrefix}-help`}
 		>
 			{#each themeGroups as group}
 				<optgroup label={group.label}>
@@ -62,8 +61,5 @@
 				</optgroup>
 			{/each}
 		</select>
-		<p id={`${idPrefix}-help`} class="preview-theme-picker__help">
-			Site theme changes synchronize this preview.
-		</p>
 	</div>
 </div>

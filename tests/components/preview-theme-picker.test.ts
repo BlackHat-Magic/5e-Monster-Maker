@@ -44,17 +44,14 @@ describe("PreviewThemePicker", () => {
 		expect(select?.querySelector('[value="monster-manual-textured"]')).not.toBeNull();
 	});
 
-	it("has an accessible label, helper text, and theme groups", () => {
+	it("has an accessible label and theme groups", () => {
 		mounted = mount(PreviewThemePicker, { target: document.body });
 		flushSync();
 
 		const select = document.querySelector<HTMLSelectElement>("#preview-theme");
 		expect(document.querySelector('label[for="preview-theme"]')?.textContent).toBe("Stat block theme");
-		expect(select?.getAttribute("aria-describedby")).toBe("preview-theme-help");
-		expect(document.getElementById("preview-theme-help")).not.toBeNull();
-		expect(document.querySelector(".preview-theme-picker__help")?.textContent).toContain(
-			"Site theme changes synchronize this preview",
-		);
+		expect(select?.hasAttribute("aria-describedby")).toBe(false);
+		expect(document.getElementById("preview-theme-help")).toBeNull();
 		expect([...select?.querySelectorAll("optgroup") ?? []].map((group) => group.label)).toEqual([
 			"Light",
 			"Dark",
@@ -70,9 +67,9 @@ describe("PreviewThemePicker", () => {
 		flushSync();
 
 		const select = document.querySelector<HTMLSelectElement>("#alternate-preview-theme");
-		expect(select?.getAttribute("aria-describedby")).toBe("alternate-preview-theme-help");
+		expect(select?.hasAttribute("aria-describedby")).toBe(false);
 		expect(document.querySelector('label[for="alternate-preview-theme"]')).not.toBeNull();
-		expect(document.getElementById("alternate-preview-theme-help")).not.toBeNull();
+		expect(document.getElementById("alternate-preview-theme-help")).toBeNull();
 
 		setPreviewTheme("nord-dark");
 		flushSync();
