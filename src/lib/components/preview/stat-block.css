@@ -243,3 +243,33 @@
   font-size: 12.5px;
   line-height: 1.2;
 }
+
+.stat-block.stat-block--two-column {
+  width: min(100%, 800px);
+}
+
+.stat-block--two-column .stat-block__body {
+  column-count: 2;
+  column-gap: 20px;
+  column-fill: balance;
+}
+
+.stat-block--two-column .stat-block__challenge,
+.stat-block--two-column .preview-section__intro,
+.stat-block--two-column .preview-action {
+  break-inside: avoid;
+}
+
+.stat-block--two-column .preview-section h3 {
+  break-after: avoid;
+}
+
+@media (max-width: 720px) {
+  .stat-block.stat-block--two-column {
+    width: min(100%, 400px);
+  }
+
+  .stat-block--two-column .stat-block__body {
+    column-count: 1;
+  }
+}
