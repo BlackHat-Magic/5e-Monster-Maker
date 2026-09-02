@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { normalizeMonster } from "../../src/lib/monster/defaults";
-import { createPreviewModel, splitPreviewSections, splitPreviewSectionsByWeights } from "../../src/lib/monster/preview";
+import { createPreviewModel, previewSectionUnitCount, splitPreviewSections, splitPreviewSectionsAtBoundary, splitPreviewSectionsByWeights } from "../../src/lib/monster/preview";
 import type { Monster } from "../../src/lib/monster/types";
 import type { MonsterPreview } from "../../src/lib/monster/preview";
 
@@ -283,6 +283,24 @@ describe("monster preview model", () => {
 
   it("keeps an empty section list empty", () => {
     expect(splitPreviewSections(previewForSections([]))).toEqual({ left: [], right: [] });
+  });
+
+  it("enumerates item boundaries while keeping empty sections indivisible", () => {
+    const previewItem = (name: string) => ({ name, description: `${name} description.`, markdown: name, html: `<p>${name}</p>` });
+    const sections: MonsterPreview["sections"] = [
+      { key: "ability", title: "", intro: null, items: [previewItem("Trait one"), previewItem("Trait two")] },
+      { key: "action", title: "Actions", intro: null, items: [] },
+      { key: "reaction", title: "Reactions", intro: null, items: [previewItem("Reaction")] },
+    ];
+    const preview = previewForSections(sections);
+
+    expect(previewSectionUnitCount(preview)).toBe(4);
+    expect(splitPreviewSectionsAtBoundary(preview, 1).left[0]?.items).toHaveLength(1);
+    expect(splitPreviewSectionsAtBoundary(preview, 2).left[0]?.items).toHaveLength(2);
+    expect(splitPreviewSectionsAtBoundary(preview, 2).right[0]).toEqual(sections[1]);
+    expect(splitPreviewSectionsAtBoundary(preview, 3).right[0]?.key).toBe("reaction");
+    expect(() => splitPreviewSectionsAtBoundary(preview, 0)).toThrow();
+    expect(() => splitPreviewSectionsAtBoundary(preview, 4)).toThrow();
   });
 
   it("keeps one section intact on the left", () => {

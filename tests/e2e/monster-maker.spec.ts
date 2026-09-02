@@ -266,8 +266,12 @@ test.describe('monster authoring', () => {
 				stats: { base_ac: 15, hit_dice: 4, speed: [30, 0, 0, 0, 0], ability_scores: [10, 10, 10, 10, 10, 10] },
 				proficiencies: { challenge: 5 },
 				two_column: true,
-				ability: [{ name: 'Stored Trait', description: `${description} <span data-preview-section="authored">Nested marker</span>` }],
-				action: [{ name: 'Stored Action', description }],
+			ability: [{ name: 'Stored Trait', description: `${description} <span data-preview-section="authored">Nested marker</span>` }],
+			action: [
+				{ name: 'Stored Action One', description },
+				{ name: 'Stored Action Two', description: 'A shorter action that creates a distinct legal intra-section boundary.' },
+				{ name: 'Stored Action Three', description: `${description} ${description}` },
+			],
 				bonus_action: [{ name: 'Stored Bonus', description }],
 				reaction: [{ name: 'Stored Reaction', description }],
 			}));
@@ -277,33 +281,82 @@ test.describe('monster authoring', () => {
 
 		const statBlock = page.locator('.stat-block');
 		await expect(statBlock).toHaveClass(/stat-block--two-column/);
-		await expect.poll(() => statBlock.locator('.stat-block__panel > [data-preview-section]').count()).toBe(4);
+		await expect.poll(() => statBlock.locator('.stat-block__panel > [data-stat-block-section]').count()).toBeGreaterThan(0);
 		await expect(statBlock).toHaveAttribute('data-stat-block-layout', 'measured');
 		const readLayout = () => statBlock.evaluate((article) => {
 			const panels = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel')];
-			const prelude = article.querySelector<HTMLElement>('[data-stat-block-prelude]');
-			const sections = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel > [data-preview-section]')];
-			const height = (element: HTMLElement) => {
-				const styles = getComputedStyle(element);
-				const marginTop = Number.parseFloat(styles.marginTop) || 0;
-				const marginBottom = Number.parseFloat(styles.marginBottom) || 0;
-				return element.getBoundingClientRect().height + marginTop + marginBottom;
+			const sourceSections = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel > [data-stat-block-section]')];
+			const records = new Map<string, { key: string; section: HTMLElement; items: HTMLElement[] }>();
+			for (const section of sourceSections) {
+				const key = section.dataset.statBlockSection ?? '';
+				let record = records.get(key);
+				if (!record) {
+					record = { key, section: section.cloneNode(true) as HTMLElement, items: [] };
+					record.section.querySelector(':scope > .preview-section__items')?.replaceChildren();
+					records.set(key, record);
+				}
+				for (const item of section.querySelectorAll<HTMLElement>(':scope > .preview-section__items > [data-stat-block-item]')) {
+					record.items.push(item.cloneNode(true) as HTMLElement);
+				}
+			}
+			const orderedRecords = [...records.values()];
+			const units = orderedRecords.flatMap((record) => record.items.length === 0
+				? [{ record, itemIndex: null as number | null }]
+				: record.items.map((_, itemIndex) => ({ record, itemIndex })));
+			const marker = (record: { key: string }, start: number, end: number) => `${record.key}:${start}:${end}`;
+			const makeFragment = (record: { key: string; section: HTMLElement; items: HTMLElement[] }, start: number, end: number) => {
+				const fragment = record.section.cloneNode(true) as HTMLElement;
+				if (start > 0) {
+					fragment.querySelector(':scope > h3')?.remove();
+					fragment.querySelector(':scope > .preview-section__intro')?.remove();
+				}
+				fragment.dataset.statBlockSection = record.key;
+				fragment.dataset.statBlockSectionFragment = marker(record, start, end);
+				fragment.querySelector(':scope > .preview-section__items')?.replaceChildren(...record.items.slice(start, end).map((item) => item.cloneNode(true)));
+				return fragment;
 			};
-			const sectionHeights = sections.map(height);
-			const preludeHeight = prelude ? height(prelude) : 0;
-			const totalHeight = preludeHeight + sectionHeights.reduce((total, value) => total + value, 0);
-			const differences = sectionHeights.map((_, index) => {
-				const leftHeight = preludeHeight + sectionHeights.slice(0, index + 1).reduce((total, value) => total + value, 0);
-				return Math.abs(leftHeight - (totalHeight - leftHeight));
-			});
-			const leftCount = panels[0]?.querySelectorAll(':scope > [data-preview-section]').length ?? 0;
-			const panelHeights = panels.map(height);
+			const appendUnits = (target: HTMLElement, selected: typeof units) => {
+				let start = 0;
+				while (start < selected.length) {
+					const record = selected[start].record;
+					const firstItem = selected[start].itemIndex;
+					if (firstItem === null) {
+						target.append(record.section.cloneNode(true));
+						start += 1;
+						continue;
+					}
+					let end = start + 1;
+					while (end < selected.length && selected[end].record === record) end += 1;
+					target.append(makeFragment(record, firstItem, selected[end - 1].itemIndex! + 1));
+					start = end;
+				}
+			};
+			const differences: number[] = [];
+			for (let boundary = 1; boundary < units.length; boundary += 1) {
+				const candidate = article.cloneNode(true) as HTMLElement;
+				candidate.style.position = 'fixed';
+				candidate.style.left = '-100000px';
+				candidate.style.top = '0';
+				candidate.style.visibility = 'hidden';
+				candidate.style.width = `${article.getBoundingClientRect().width}px`;
+				const candidatePanels = [...candidate.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel')];
+				for (const panel of candidatePanels) for (const section of panel.querySelectorAll<HTMLElement>(':scope > [data-stat-block-section]')) section.remove();
+				appendUnits(candidatePanels[0], units.slice(0, boundary));
+				appendUnits(candidatePanels[1], units.slice(boundary));
+				document.body.append(candidate);
+				differences.push(Math.abs(candidatePanels[0].getBoundingClientRect().height - candidatePanels[1].getBoundingClientRect().height));
+				candidate.remove();
+			}
+			const leftUnits = [...(panels[0]?.querySelectorAll<HTMLElement>(':scope > [data-stat-block-section]') ?? [])].reduce((total, section) => total + Math.max(1, section.querySelectorAll(':scope > .preview-section__items > [data-stat-block-item]').length), 0);
+			const panelHeights = panels.map((panel) => panel.getBoundingClientRect().height);
 			return {
-				leftKeys: [...(panels[0]?.querySelectorAll<HTMLElement>(':scope > [data-preview-section]') ?? [])].map((section) => section.dataset.previewSection),
-				rightKeys: [...(panels[1]?.querySelectorAll<HTMLElement>(':scope > [data-preview-section]') ?? [])].map((section) => section.dataset.previewSection),
+				leftKeys: [...(panels[0]?.querySelectorAll<HTMLElement>(':scope > [data-stat-block-section]') ?? [])].map((section) => section.dataset.statBlockSection),
+				rightKeys: [...(panels[1]?.querySelectorAll<HTMLElement>(':scope > [data-stat-block-section]') ?? [])].map((section) => section.dataset.statBlockSection),
 				panelHeights,
-				currentDifference: differences[leftCount - 1] ?? Number.POSITIVE_INFINITY,
+				selectedBoundary: leftUnits,
+				currentDifference: differences[leftUnits - 1],
 				bestDifference: Math.min(...differences),
+				candidateCount: differences.length,
 			};
 		});
 		await expect.poll(async () => {
@@ -313,6 +366,7 @@ test.describe('monster authoring', () => {
 		const layout = await readLayout();
 		expect(layout.leftKeys.length).toBeGreaterThan(0);
 		expect(layout.rightKeys.length).toBeGreaterThan(0);
+		expect(layout.candidateCount).toBeGreaterThan(4);
 		expect(layout.currentDifference).toBeLessThanOrEqual(layout.bestDifference + 1);
 		expect(Math.abs(layout.panelHeights[0] - layout.panelHeights[1])).toBeLessThan(Math.max(...layout.panelHeights) * 0.75);
 
@@ -321,7 +375,7 @@ test.describe('monster authoring', () => {
 			const parsed = new DOMParser().parseFromString(markup, mime);
 			const article = parsed.querySelector<HTMLElement>('.stat-block');
 			return [...(article?.querySelectorAll<HTMLElement>('.stat-block__panel') ?? [])].map((panel) =>
-				[...panel.querySelectorAll<HTMLElement>(':scope > [data-preview-section]')].map((section) => section.dataset.previewSection));
+				[...panel.querySelectorAll<HTMLElement>(':scope > [data-stat-block-section]')].map((section) => section.dataset.statBlockSection));
 		}, { markup, mime });
 
 		for (const [format, mime] of [['HTML', 'text/html'], ['SVG', 'image/svg+xml']] as const) {

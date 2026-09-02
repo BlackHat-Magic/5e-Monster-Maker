@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { splitPreviewSections, splitPreviewSectionsByWeights, type MonsterPreview, type PreviewSection, type PreviewSectionColumns } from '$lib/monster/preview';
+	import { previewSectionUnitCount, splitPreviewSections, splitPreviewSectionsAtBoundary, type MonsterPreview, type PreviewSection, type PreviewSectionColumns } from '$lib/monster/preview';
 	import { statBlockThemeStyle, type StatBlockThemeKey } from '$lib/theme/stat-block-themes';
 	import AbilityTable from './AbilityTable.svelte';
 	import PreviewActionSection from './PreviewActionSection.svelte';
@@ -14,86 +14,119 @@
 
 	let { preview, theme, idPrefix, twoColumn = false }: Props = $props();
 	let estimatedColumns = $derived(splitPreviewSections(preview));
+	let candidateColumns = $derived(Array.from({ length: Math.max(0, previewSectionUnitCount(preview) - 1) }, (_, index) => splitPreviewSectionsAtBoundary(preview, index + 1)));
 	let measuredColumns = $state<PreviewSectionColumns | null>(null);
 	let measurementReady = $state(false);
-	let sectionColumns = $derived(measuredColumns ?? estimatedColumns);
+	let sweepIndex = $state<number | null>(null);
+	let sweepColumns = $derived(sweepIndex === null ? null : candidateColumns[sweepIndex] ?? null);
+	let sectionColumns = $derived(measuredColumns ?? sweepColumns ?? estimatedColumns);
 	let panelsElement = $state<HTMLElement | null>(null);
 	let measurementFrame: number | null = null;
+	let measurementGeneration = 0;
+	let measuredDifferences: number[] = [];
+	let externalInvalidationPending = false;
+	let suppressResizeInvalidation = false;
+	let observerReleaseTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	function inlineHtml(value: { html: string }): string {
 		return value.html.replace(/^<p>([\s\S]*)<\/p>\s*$/, '$1');
 	}
 
-	function sectionSignature(columns: PreviewSectionColumns): string {
-		const signature = (section: PreviewSection) => `${section.key}:${section.items.map((item) => item.markdown).join('|')}:${section.title ? 'title' : ''}:${section.intro ? 'intro' : ''}`;
-		return `${columns.left.map(signature).join(',')}|${columns.right.map(signature).join(',')}`;
-	}
-
-	function setSectionColumns(next: PreviewSectionColumns): void {
-		if (sectionSignature(next) !== sectionSignature(sectionColumns)) measuredColumns = next;
-	}
-
-	function renderedHeight(element: HTMLElement): number {
-		const rect = element.getBoundingClientRect();
-		const styles = getComputedStyle(element);
-		const marginTop = Number.parseFloat(styles.marginTop) || 0;
-		const marginBottom = Number.parseFloat(styles.marginBottom) || 0;
-		return rect.height + marginTop + marginBottom;
-	}
-
-	function generatedSections(root: HTMLElement): HTMLElement[] {
-		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-preview-section]')];
-	}
-
-	function generatedItems(section: HTMLElement): HTMLElement[] {
-		return [...section.querySelectorAll<HTMLElement>(':scope > .preview-section__items > .preview-action')];
-	}
-
-	function generatedMeasurementTargets(root: HTMLElement): HTMLElement[] {
-		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-stat-block-prelude], :scope > .stat-block__panel > [data-preview-section]')];
-	}
-
-	function measureSectionColumns(root: HTMLElement): void {
-		if (!twoColumn) return;
-		const prelude = root.querySelector<HTMLElement>(':scope > .stat-block__panel--left > [data-stat-block-prelude]');
-		const sections = generatedSections(root);
-		const renderedFragments = [...sectionColumns.left, ...sectionColumns.right];
-		if (!prelude || sections.length !== renderedFragments.length) return;
-
-		const sectionWeights = preview.sections.map(() => 0);
-		const itemWeights = preview.sections.map(() => [] as number[]);
-		const seenItems = preview.sections.map(() => 0);
-		for (const [index, element] of sections.entries()) {
-			const fragment = renderedFragments[index];
-			if (!fragment) return;
-			const sectionIndex = preview.sections.findIndex((section) => section.key === fragment.key);
-			if (sectionIndex < 0) return;
-			const items = generatedItems(element);
-			if (items.length !== fragment.items.length) return;
-
-			if (items.length === 0) {
-				sectionWeights[sectionIndex] = renderedHeight(element);
-				continue;
-			}
-			const weights = items.map(renderedHeight);
-			const sectionOverhead = Math.max(0, renderedHeight(element) - weights.reduce((total, weight) => total + weight, 0));
-			weights[0] += sectionOverhead;
-			itemWeights[sectionIndex].push(...weights);
-			seenItems[sectionIndex] += items.length;
-			sectionWeights[sectionIndex] += weights.reduce((total, weight) => total + weight, 0);
-		}
-
-		if (preview.sections.some((section, index) => section.items.length !== seenItems[index])) return;
-		setSectionColumns(splitPreviewSectionsByWeights(preview, renderedHeight(prelude), sectionWeights, itemWeights));
-		measurementReady = true;
-	}
-
 	function scheduleMeasurement(): void {
 		if (!twoColumn || !panelsElement || typeof requestAnimationFrame !== 'function' || measurementFrame !== null) return;
+		const generation = measurementGeneration;
 		measurementFrame = requestAnimationFrame(() => {
 			measurementFrame = null;
-			if (panelsElement) measureSectionColumns(panelsElement);
+			if (generation !== measurementGeneration || !panelsElement) return;
+			measureCandidate(panelsElement);
 		});
+	}
+
+	function finishMeasurement(candidates: readonly PreviewSectionColumns[]): void {
+		const bestIndex = measuredDifferences.reduce((best, difference, index) => difference < measuredDifferences[best] ? index : best, 0);
+		measuredColumns = candidates[bestIndex] ?? estimatedColumns;
+		measurementReady = true;
+		sweepIndex = null;
+		suppressResizeInvalidation = true;
+		if (observerReleaseTimeout !== null) clearTimeout(observerReleaseTimeout);
+		observerReleaseTimeout = setTimeout(() => {
+			suppressResizeInvalidation = false;
+			observerReleaseTimeout = null;
+		}, 0);
+	}
+
+	function measureCandidate(root: HTMLElement): void {
+		if (!twoColumn) return;
+		const candidates = candidateColumns;
+		if (sweepIndex === null) {
+			if (candidates.length === 0) finishMeasurement(candidates);
+			else {
+				sweepIndex = 0;
+				scheduleMeasurement();
+			}
+			return;
+		}
+
+		const candidate = candidates[sweepIndex];
+		if (!candidate) {
+			scheduleMeasurement();
+			return;
+		}
+		const leftPanel = root.querySelector<HTMLElement>(':scope > .stat-block__panel--left');
+		const rightPanel = root.querySelector<HTMLElement>(':scope > .stat-block__panel--right');
+		if (!leftPanel || !rightPanel) {
+			scheduleMeasurement();
+			return;
+		}
+		const leftHeight = leftPanel.getBoundingClientRect().height;
+		const rightHeight = rightPanel.getBoundingClientRect().height;
+		if (!Number.isFinite(leftHeight) || !Number.isFinite(rightHeight)) {
+			scheduleMeasurement();
+			return;
+		}
+		measuredDifferences[sweepIndex] = Math.abs(leftHeight - rightHeight);
+		if (sweepIndex + 1 < candidates.length) {
+			sweepIndex += 1;
+			scheduleMeasurement();
+		} else if (externalInvalidationPending) {
+			externalInvalidationPending = false;
+			beginMeasurement();
+		} else {
+			finishMeasurement(candidates);
+		}
+	}
+
+	function cancelMeasurement(): void {
+		measurementGeneration += 1;
+		if (measurementFrame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(measurementFrame);
+		measurementFrame = null;
+		if (observerReleaseTimeout !== null) clearTimeout(observerReleaseTimeout);
+		observerReleaseTimeout = null;
+		suppressResizeInvalidation = false;
+		externalInvalidationPending = false;
+	}
+
+	function beginMeasurement(): void {
+		cancelMeasurement();
+		measuredColumns = null;
+		measurementReady = false;
+		measuredDifferences = [];
+		sweepIndex = null;
+		scheduleMeasurement();
+	}
+
+	function invalidateFromExternalChange(): void {
+		if (!twoColumn || !panelsElement) return;
+		if (sweepIndex !== null || measurementFrame !== null) {
+			externalInvalidationPending = true;
+			return;
+		}
+		beginMeasurement();
+	}
+
+	function invalidateFromResize(): void {
+		if (!twoColumn || !panelsElement || suppressResizeInvalidation || sweepIndex !== null || !measurementReady) return;
+		beginMeasurement();
 	}
 
 	$effect(() => {
@@ -101,60 +134,35 @@
 		const currentTwoColumn = twoColumn;
 		const root = panelsElement;
 		if (!currentTwoColumn) {
+			cancelMeasurement();
 			measuredColumns = null;
 			measurementReady = false;
+			sweepIndex = null;
 			return;
 		}
 		if (!root) return;
-		measuredColumns = null;
-		measurementReady = false;
-		scheduleMeasurement();
+		void currentPreview;
+		beginMeasurement();
+		return () => cancelMeasurement();
 	});
 
 	$effect(() => {
 		const root = panelsElement;
 		const currentTwoColumn = twoColumn;
 		if (!currentTwoColumn || !root) return;
-
-		const invalidateMeasurement = () => {
-			measurementReady = false;
-			scheduleMeasurement();
-		};
-		const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateMeasurement) : undefined;
-		const observedElements = new Set<HTMLElement>();
-		const syncResizeTargets = () => {
-			const currentElements = new Set(generatedMeasurementTargets(root));
-			for (const element of observedElements) {
-				if (!currentElements.has(element)) {
-					resizeObserver?.unobserve(element);
-					observedElements.delete(element);
-				}
-			}
-			for (const element of currentElements) {
-				if (!observedElements.has(element)) {
-					resizeObserver?.observe(element);
-					observedElements.add(element);
-				}
-			}
-		};
-		const observeMutations = () => {
-			const sections = generatedSections(root);
-			if (sections.length !== preview.sections.length) measurementReady = false;
-			syncResizeTargets();
-			scheduleMeasurement();
-		};
+		const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateFromResize) : undefined;
 		resizeObserver?.observe(root);
-		syncResizeTargets();
-		const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver(observeMutations) : undefined;
-		mutationObserver?.observe(root, { childList: true, subtree: true });
-		scheduleMeasurement();
+		for (const panel of root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel')) resizeObserver?.observe(panel);
+		const fontSet = document.fonts;
+		fontSet?.addEventListener('loadingdone', invalidateFromExternalChange);
+		window.addEventListener('resize', invalidateFromExternalChange);
+		root.addEventListener('load', invalidateFromExternalChange, true);
 
 		return () => {
 			resizeObserver?.disconnect();
-			observedElements.clear();
-			mutationObserver?.disconnect();
-			if (measurementFrame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(measurementFrame);
-			measurementFrame = null;
+			fontSet?.removeEventListener('loadingdone', invalidateFromExternalChange);
+			window.removeEventListener('resize', invalidateFromExternalChange);
+			root.removeEventListener('load', invalidateFromExternalChange, true);
 		};
 	});
 </script>
@@ -195,7 +203,7 @@
 {/snippet}
 
 	{#snippet sectionFlow(sections: PreviewSection[], measured: boolean)}
-	{#each sections as section (section.key)}
+	{#each sections as section (section.key + ':' + (section.fragmentStart ?? 0))}
 		<PreviewActionSection {section} {idPrefix} {measured} />
 	{/each}
 {/snippet}

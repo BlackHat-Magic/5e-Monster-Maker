@@ -57,6 +57,9 @@ export interface PreviewSection {
   title: string;
   intro: PreviewText | null;
   items: PreviewTrait[];
+  fragmentStart?: number;
+  fragmentEnd?: number;
+  ariaLabel?: string;
 }
 
 export type PreviewSectionKey =
@@ -402,12 +405,71 @@ function sectionUnits(
 }
 
 function sectionFragment(section: PreviewSection, start: number, end: number): PreviewSection {
-  return {
+  const fragment = {
     ...section,
     title: start === 0 ? section.title : "",
     intro: start === 0 ? section.intro : null,
     items: section.items.slice(start, end),
   };
+  if (start !== 0 || end !== section.items.length) {
+    fragment.fragmentStart = start;
+    fragment.fragmentEnd = end;
+    fragment.ariaLabel = section.title || undefined;
+  }
+  return fragment;
+}
+
+function previewSectionUnits(preview: MonsterPreview): PreviewSectionUnit[] {
+  return preview.sections.flatMap((section, sectionIndex) => {
+    if (section.items.length === 0) return [{ sectionIndex, itemIndex: null, weight: 1 }];
+    return section.items.map<PreviewSectionUnit>((_, itemIndex) => ({ sectionIndex, itemIndex, weight: 1 }));
+  });
+}
+
+function columnsAtUnitBoundary(
+  preview: MonsterPreview,
+  units: readonly PreviewSectionUnit[],
+  splitIndex: number,
+): PreviewSectionColumns {
+  const leftUnits = units.slice(0, splitIndex);
+  const rightUnits = units.slice(splitIndex);
+  const fragments = (selectedUnits: readonly PreviewSectionUnit[]): PreviewSection[] => {
+    const output: PreviewSection[] = [];
+    let start = 0;
+    while (start < selectedUnits.length) {
+      const sectionIndex = selectedUnits[start].sectionIndex;
+      const section = preview.sections[sectionIndex];
+      if (!section) break;
+      const firstItem = selectedUnits[start].itemIndex;
+      if (firstItem === null) {
+        output.push(section);
+        start += 1;
+        continue;
+      }
+      let end = start + 1;
+      while (end < selectedUnits.length && selectedUnits[end].sectionIndex === sectionIndex) end += 1;
+      const lastItem = selectedUnits[end - 1].itemIndex;
+      if (lastItem === null) break;
+      output.push(sectionFragment(section, firstItem, lastItem + 1));
+      start = end;
+    }
+    return output;
+  };
+
+  return { left: fragments(leftUnits), right: fragments(rightUnits) };
+}
+
+export function previewSectionUnitCount(preview: MonsterPreview): number {
+  return previewSectionUnits(preview).length;
+}
+
+export function splitPreviewSectionsAtBoundary(preview: MonsterPreview, splitIndex: number): PreviewSectionColumns {
+  const units = previewSectionUnits(preview);
+  if (units.length <= 1) return { left: preview.sections, right: [] };
+  if (!Number.isInteger(splitIndex) || splitIndex < 1 || splitIndex >= units.length) {
+    throw new Error(`Preview section boundary must be between 1 and ${units.length - 1}`);
+  }
+  return columnsAtUnitBoundary(preview, units, splitIndex);
 }
 
 /**
@@ -453,35 +515,7 @@ export function splitPreviewSectionsByWeights(
     }
   }
 
-  const leftUnits = units.slice(0, splitIndex);
-  const rightUnits = units.slice(splitIndex);
-  const fragments = (selectedUnits: PreviewSectionUnit[]): PreviewSection[] => {
-    const output: PreviewSection[] = [];
-    let start = 0;
-    while (start < selectedUnits.length) {
-      const sectionIndex = selectedUnits[start].sectionIndex;
-      const section = preview.sections[sectionIndex];
-      if (!section) break;
-      const firstItem = selectedUnits[start].itemIndex;
-      if (firstItem === null) {
-        output.push(section);
-        start += 1;
-        continue;
-      }
-      let end = start + 1;
-      while (end < selectedUnits.length && selectedUnits[end].sectionIndex === sectionIndex) end += 1;
-      const lastItem = selectedUnits[end - 1].itemIndex;
-      if (lastItem === null) break;
-      output.push(sectionFragment(section, firstItem, lastItem + 1));
-      start = end;
-    }
-    return output;
-  };
-
-  return {
-    left: fragments(leftUnits),
-    right: fragments(rightUnits),
-  };
+  return columnsAtUnitBoundary(preview, units, splitIndex);
 }
 
 function assertPreviewBrowserDom(): void {

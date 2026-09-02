@@ -78,7 +78,7 @@ describe('StatBlockPreview', () => {
 		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
 		expect(article?.classList.contains('stat-block--two-column')).toBe(false);
 		expect(article?.querySelector('.stat-block__body')).toBeNull();
-		expect(article?.querySelector('[data-preview-section]')).toBeNull();
+		expect(article?.querySelector('[data-stat-block-section]')).toBeNull();
 		expect([...article!.children].map((child) => child.classList.contains('preview-section')
 			? child.classList.contains('preview-section--traits') ? 'preview-section--traits' : 'preview-section'
 			: child.className)).toEqual([
@@ -160,7 +160,7 @@ describe('StatBlockPreview', () => {
 
 		const article = document.querySelector<HTMLElement>('article.stat-block');
 		expect(article?.querySelector('.preview-action [data-preview-section="authored"]')).not.toBeNull();
-		expect(article?.querySelectorAll(':scope > .stat-block__panels > .stat-block__panel > [data-preview-section]')).toHaveLength(model.sections.length);
+		expect(article?.querySelectorAll(':scope > .stat-block__panels > .stat-block__panel > [data-stat-block-section]')).toHaveLength(model.sections.length);
 	});
 
 	it('keeps stat block accessibility references unique per instance', () => {
