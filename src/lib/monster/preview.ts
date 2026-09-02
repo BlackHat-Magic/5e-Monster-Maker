@@ -348,6 +348,11 @@ function estimatedSectionWeight(section: PreviewSection): number {
   );
 }
 
+function estimatedSectionItemWeights(section: PreviewSection): number[] {
+  const sectionPreludeWeight = 1 + (section.title ? 1.5 : 0) + estimatedTextWeight(section.intro);
+  return section.items.map((item, index) => estimatedTextWeight(item) + (index === 0 ? sectionPreludeWeight : 0));
+}
+
 function estimatedLeftPreludeWeight(preview: MonsterPreview): number {
   return (
     4 +
@@ -363,15 +368,58 @@ function estimatedLeftPreludeWeight(preview: MonsterPreview): number {
   );
 }
 
+interface PreviewSectionUnit {
+  sectionIndex: number;
+  itemIndex: number | null;
+  weight: number;
+}
+
+function safeWeight(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) && value !== undefined && value >= 0 ? value : fallback;
+}
+
+function sectionUnits(
+  section: PreviewSection,
+  sectionIndex: number,
+  sectionWeight: number | undefined,
+  itemWeights: readonly number[] | undefined,
+): PreviewSectionUnit[] {
+  if (section.items.length === 0) {
+    return [{ sectionIndex, itemIndex: null, weight: safeWeight(sectionWeight, estimatedSectionWeight(section)) }];
+  }
+
+  const estimatedItems = estimatedSectionItemWeights(section);
+  const estimatedTotal = estimatedItems.reduce((total, weight) => total + weight, 0);
+  const measuredItems = itemWeights?.length === section.items.length && itemWeights.every((weight) => Number.isFinite(weight) && weight >= 0)
+    ? itemWeights
+    : undefined;
+  const targetWeight = safeWeight(sectionWeight, estimatedTotal);
+  const weights = measuredItems
+    ? [...measuredItems]
+    : estimatedItems.map((weight) => estimatedTotal > 0 ? weight * targetWeight / estimatedTotal : weight);
+
+  return weights.map((weight, itemIndex) => ({ sectionIndex, itemIndex, weight }));
+}
+
+function sectionFragment(section: PreviewSection, start: number, end: number): PreviewSection {
+  return {
+    ...section,
+    title: start === 0 ? section.title : "",
+    intro: start === 0 ? section.intro : null,
+    items: section.items.slice(start, end),
+  };
+}
+
 /**
- * Select the closest estimated boundary while preserving a whole section on each side.
- * The minimum one-section-per-side rule intentionally wins over equal weights when the prelude is dominant.
+ * Select the closest item boundary. Empty sections remain one indivisible unit,
+ * while a populated section carries its heading and intro on its first fragment.
  */
 export function splitPreviewSections(preview: MonsterPreview): PreviewSectionColumns {
   return splitPreviewSectionsByWeights(
     preview,
     estimatedLeftPreludeWeight(preview),
     preview.sections.map(estimatedSectionWeight),
+    preview.sections.map(estimatedSectionItemWeights),
   );
 }
 
@@ -379,24 +427,24 @@ export function splitPreviewSectionsByWeights(
   preview: MonsterPreview,
   preludeWeight: number,
   sectionWeights: readonly number[],
+  itemWeights?: readonly (readonly number[] | undefined)[],
 ): PreviewSectionColumns {
-  if (preview.sections.length <= 1) return { left: preview.sections, right: [] };
+  const safePreludeWeight = safeWeight(preludeWeight, estimatedLeftPreludeWeight(preview));
+  const units = preview.sections.flatMap((section, sectionIndex) => sectionUnits(
+    section,
+    sectionIndex,
+    sectionWeights[sectionIndex],
+    itemWeights?.[sectionIndex],
+  ));
+  if (units.length <= 1) return { left: preview.sections, right: [] };
 
-  const safePreludeWeight = Number.isFinite(preludeWeight) && preludeWeight >= 0
-    ? preludeWeight
-    : estimatedLeftPreludeWeight(preview);
-  const safeSectionWeights = preview.sections.map((section, index) => {
-    const weight = sectionWeights[index];
-    return Number.isFinite(weight) && weight >= 0 ? weight : estimatedSectionWeight(section);
-  });
-  const totalWeight = safePreludeWeight + safeSectionWeights.reduce((total, weight) => total + weight, 0);
+  const totalWeight = safePreludeWeight + units.reduce((total, unit) => total + unit.weight, 0);
   let leftWeight = safePreludeWeight;
   let splitIndex = 1;
   let smallestDifference = Number.POSITIVE_INFINITY;
 
-  // Keep one whole section on each side when the prelude dominates the estimate.
-  for (let index = 1; index < preview.sections.length; index += 1) {
-    leftWeight += safeSectionWeights[index - 1];
+  for (let index = 1; index < units.length; index += 1) {
+    leftWeight += units[index - 1].weight;
     const rightWeight = totalWeight - leftWeight;
     const difference = Math.abs(leftWeight - rightWeight);
     if (difference < smallestDifference) {
@@ -405,9 +453,34 @@ export function splitPreviewSectionsByWeights(
     }
   }
 
+  const leftUnits = units.slice(0, splitIndex);
+  const rightUnits = units.slice(splitIndex);
+  const fragments = (selectedUnits: PreviewSectionUnit[]): PreviewSection[] => {
+    const output: PreviewSection[] = [];
+    let start = 0;
+    while (start < selectedUnits.length) {
+      const sectionIndex = selectedUnits[start].sectionIndex;
+      const section = preview.sections[sectionIndex];
+      if (!section) break;
+      const firstItem = selectedUnits[start].itemIndex;
+      if (firstItem === null) {
+        output.push(section);
+        start += 1;
+        continue;
+      }
+      let end = start + 1;
+      while (end < selectedUnits.length && selectedUnits[end].sectionIndex === sectionIndex) end += 1;
+      const lastItem = selectedUnits[end - 1].itemIndex;
+      if (lastItem === null) break;
+      output.push(sectionFragment(section, firstItem, lastItem + 1));
+      start = end;
+    }
+    return output;
+  };
+
   return {
-    left: preview.sections.slice(0, splitIndex),
-    right: preview.sections.slice(splitIndex),
+    left: fragments(leftUnits),
+    right: fragments(rightUnits),
   };
 }
 

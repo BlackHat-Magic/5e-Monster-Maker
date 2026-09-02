@@ -237,6 +237,50 @@ describe("monster preview model", () => {
     expect([...measured.left, ...measured.right]).toEqual(sections);
   });
 
+  it("splits populated sections only between items and keeps the header on the first fragment", () => {
+    const item = (name: string) => ({
+      name,
+      description: `${name} description.`,
+      markdown: `***${name}.*** ${name} description.`,
+      html: `<p><strong><em>${name}.</em></strong> ${name} description.</p>`,
+    });
+    const section: MonsterPreview["sections"][number] = {
+      key: "action",
+      title: "Actions",
+      intro: { markdown: "Choose an action.", html: "<p>Choose an action.</p>" },
+      items: [item("First"), item("Second"), item("Third")],
+    };
+    const result = splitPreviewSectionsByWeights(previewForSections([section]), 1, [6], [[2, 2, 2]]);
+
+    expect(result.left).toHaveLength(1);
+    expect(result.left[0]).toMatchObject({ title: "Actions", intro: section.intro, items: [section.items[0]] });
+    expect(result.right).toHaveLength(1);
+    expect(result.right[0]).toMatchObject({ title: "", intro: null, items: section.items.slice(1) });
+  });
+
+  it("keeps an empty section with its header and intro as one unit", () => {
+    const emptySection: MonsterPreview["sections"][number] = {
+      key: "reaction",
+      title: "Reactions",
+      intro: { markdown: "An empty reaction section.", html: "<p>An empty reaction section.</p>" },
+      items: [],
+    };
+    const populatedSection: MonsterPreview["sections"][number] = {
+      key: "action",
+      title: "Actions",
+      intro: null,
+      items: [{ name: "Action", description: "Description.", markdown: "Action", html: "<p>Action</p>" }],
+    };
+    const result = splitPreviewSectionsByWeights(
+      previewForSections([populatedSection, emptySection]),
+      0,
+      [1, 1],
+      [[1], undefined],
+    );
+
+    expect(result.right).toEqual([emptySection]);
+  });
+
   it("keeps an empty section list empty", () => {
     expect(splitPreviewSections(previewForSections([]))).toEqual({ left: [], right: [] });
   });

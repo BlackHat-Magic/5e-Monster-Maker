@@ -25,7 +25,8 @@
 	}
 
 	function sectionSignature(columns: PreviewSectionColumns): string {
-		return `${columns.left.map((section) => section.key).join(',')}|${columns.right.map((section) => section.key).join(',')}`;
+		const signature = (section: PreviewSection) => `${section.key}:${section.items.map((item) => item.markdown).join('|')}:${section.title ? 'title' : ''}:${section.intro ? 'intro' : ''}`;
+		return `${columns.left.map(signature).join(',')}|${columns.right.map(signature).join(',')}`;
 	}
 
 	function setSectionColumns(next: PreviewSectionColumns): void {
@@ -44,6 +45,10 @@
 		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-preview-section]')];
 	}
 
+	function generatedItems(section: HTMLElement): HTMLElement[] {
+		return [...section.querySelectorAll<HTMLElement>(':scope > .preview-section__items > .preview-action')];
+	}
+
 	function generatedMeasurementTargets(root: HTMLElement): HTMLElement[] {
 		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-stat-block-prelude], :scope > .stat-block__panel > [data-preview-section]')];
 	}
@@ -52,13 +57,34 @@
 		if (!twoColumn) return;
 		const prelude = root.querySelector<HTMLElement>(':scope > .stat-block__panel--left > [data-stat-block-prelude]');
 		const sections = generatedSections(root);
-		if (!prelude || sections.length !== preview.sections.length) return;
+		const renderedFragments = [...sectionColumns.left, ...sectionColumns.right];
+		if (!prelude || sections.length !== renderedFragments.length) return;
 
-		const sectionWeights = preview.sections.map((section) => {
-			const element = sections.find((candidate) => candidate.dataset.previewSection === section.key);
-			return element ? renderedHeight(element) : Number.NaN;
-		});
-		setSectionColumns(splitPreviewSectionsByWeights(preview, renderedHeight(prelude), sectionWeights));
+		const sectionWeights = preview.sections.map(() => 0);
+		const itemWeights = preview.sections.map(() => [] as number[]);
+		const seenItems = preview.sections.map(() => 0);
+		for (const [index, element] of sections.entries()) {
+			const fragment = renderedFragments[index];
+			if (!fragment) return;
+			const sectionIndex = preview.sections.findIndex((section) => section.key === fragment.key);
+			if (sectionIndex < 0) return;
+			const items = generatedItems(element);
+			if (items.length !== fragment.items.length) return;
+
+			if (items.length === 0) {
+				sectionWeights[sectionIndex] = renderedHeight(element);
+				continue;
+			}
+			const weights = items.map(renderedHeight);
+			const sectionOverhead = Math.max(0, renderedHeight(element) - weights.reduce((total, weight) => total + weight, 0));
+			weights[0] += sectionOverhead;
+			itemWeights[sectionIndex].push(...weights);
+			seenItems[sectionIndex] += items.length;
+			sectionWeights[sectionIndex] += weights.reduce((total, weight) => total + weight, 0);
+		}
+
+		if (preview.sections.some((section, index) => section.items.length !== seenItems[index])) return;
+		setSectionColumns(splitPreviewSectionsByWeights(preview, renderedHeight(prelude), sectionWeights, itemWeights));
 		measurementReady = true;
 	}
 
