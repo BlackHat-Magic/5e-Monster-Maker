@@ -58,6 +58,23 @@ const dragon: Monster = normalizeMonster({
   mythic_action: [{ name: "Mythic", description: "{{MON}} takes a mythic action." }],
 });
 
+function previewForSections(sections: MonsterPreview["sections"]): MonsterPreview {
+  const text = { markdown: "", html: "" };
+  const field = { label: "", value: "", ...text };
+  return {
+    name: text,
+    meta: null,
+    flavor: null,
+    armorClass: { label: "Armor Class", value: "", ...text },
+    hitPoints: { label: "Hit Points", value: "", ...text },
+    speed: { label: "Speed", value: "", ...text },
+    abilities: [],
+    fields: [field],
+    challenge: { challenge: "0", xp: 0, xpText: "0", proficiencyBonus: 2, proficiencyBonusText: "+2", ...text },
+    sections,
+  };
+}
+
 describe("monster preview model", () => {
   it("requires a browser DOM at the preview entry point and restores globals", () => {
     const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -201,6 +218,32 @@ describe("monster preview model", () => {
     expect([...first.left, ...first.right].map((section) => section.key)).toEqual(
       preview.sections.map((section) => section.key),
     );
+  });
+
+  it("keeps an empty section list empty", () => {
+    expect(splitPreviewSections(previewForSections([]))).toEqual({ left: [], right: [] });
+  });
+
+  it("keeps one section intact on the left", () => {
+    const sections: MonsterPreview["sections"] = [{ key: "ability", title: "", intro: null, items: [] }];
+    const result = splitPreviewSections(previewForSections(sections));
+
+    expect(result.left).toEqual(sections);
+    expect(result.right).toEqual([]);
+  });
+
+  it("preserves multiple sparse sections without splitting or losing them", () => {
+    const sections: MonsterPreview["sections"] = [
+      { key: "ability", title: "", intro: null, items: [] },
+      { key: "action", title: "Actions", intro: null, items: [] },
+      { key: "reaction", title: "Reactions", intro: { markdown: "", html: "" }, items: [] },
+    ];
+    const result = splitPreviewSections(previewForSections(sections));
+
+    expect(result.left.length).toBeGreaterThan(0);
+    expect(result.right.length).toBeGreaterThan(0);
+    expect([...result.left, ...result.right]).toEqual(sections);
+    expect(new Set([...result.left, ...result.right].map((section) => section.key)).size).toBe(sections.length);
   });
 
   it("keeps one whole lower section on each side when the prelude dominates", () => {

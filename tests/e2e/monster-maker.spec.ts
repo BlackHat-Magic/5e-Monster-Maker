@@ -381,9 +381,11 @@ test.describe('monster authoring', () => {
 		await narrowPage.setContent(html);
 		const htmlLayout = await narrowPage.locator('.standalone-stat-block').evaluate((wrapper) => {
 			const styles = getComputedStyle(wrapper);
+			const article = wrapper.querySelector<HTMLElement>('.stat-block');
 			const panels = wrapper.querySelector<HTMLElement>('.stat-block__panels');
 			return {
 				width: Number.parseFloat(styles.width),
+				articleWidth: article?.getBoundingClientRect().width ?? Number.POSITIVE_INFINITY,
 				clientHeight: wrapper.clientHeight,
 				scrollHeight: wrapper.scrollHeight,
 				overflow: styles.overflow,
@@ -391,9 +393,11 @@ test.describe('monster authoring', () => {
 			};
 		});
 		expect(htmlLayout.width).toBeLessThanOrEqual(390);
+		expect(htmlLayout.articleWidth).toBeLessThanOrEqual(390);
 		expect(htmlLayout.scrollHeight).toBeLessThanOrEqual(htmlLayout.clientHeight + 1);
 		expect(htmlLayout.overflow).toBe('visible');
 		expect(htmlLayout.gridColumns).toBe(1);
+		await expect.poll(() => narrowPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 		await narrowPage.close();
 
 		await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
@@ -403,7 +407,12 @@ test.describe('monster authoring', () => {
 		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
 		download = await downloadPromise;
 		const svg = new TextDecoder().decode(await downloadBytes(download));
-		expect(svg).toContain('viewBox="0 0');
+		const dimensions = /<svg[^>]+width="(\d+)"[^>]+height="(\d+)"[^>]+viewBox="0 0 (\d+) (\d+)"/.exec(svg);
+		expect(dimensions).not.toBeNull();
+		const [width, height, viewBoxWidth, viewBoxHeight] = dimensions?.slice(1).map(Number) ?? [];
+		expect(width).toBeGreaterThan(0);
+		expect(height).toBeGreaterThan(0);
+		expect({ width: viewBoxWidth, height: viewBoxHeight }).toEqual({ width, height });
 		expect(svg).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);');
 		expect(svg).not.toContain('width: 100% !important');
 		expect(svg).not.toContain('height: auto !important');
