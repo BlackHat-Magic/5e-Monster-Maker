@@ -40,10 +40,18 @@
 		return rect.height + marginTop + marginBottom;
 	}
 
+	function generatedSections(root: HTMLElement): HTMLElement[] {
+		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-preview-section]')];
+	}
+
+	function generatedMeasurementTargets(root: HTMLElement): HTMLElement[] {
+		return [...root.querySelectorAll<HTMLElement>(':scope > .stat-block__panel > [data-stat-block-prelude], :scope > .stat-block__panel > [data-preview-section]')];
+	}
+
 	function measureSectionColumns(root: HTMLElement): void {
 		if (!twoColumn) return;
-		const prelude = root.querySelector<HTMLElement>('[data-stat-block-prelude]');
-		const sections = [...root.querySelectorAll<HTMLElement>('[data-preview-section]')];
+		const prelude = root.querySelector<HTMLElement>(':scope > .stat-block__panel--left > [data-stat-block-prelude]');
+		const sections = generatedSections(root);
 		if (!prelude || sections.length !== preview.sections.length) return;
 
 		const sectionWeights = preview.sections.map((section) => {
@@ -86,21 +94,38 @@
 			measurementReady = false;
 			scheduleMeasurement();
 		};
+		const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateMeasurement) : undefined;
+		const observedElements = new Set<HTMLElement>();
+		const syncResizeTargets = () => {
+			const currentElements = new Set(generatedMeasurementTargets(root));
+			for (const element of observedElements) {
+				if (!currentElements.has(element)) {
+					resizeObserver?.unobserve(element);
+					observedElements.delete(element);
+				}
+			}
+			for (const element of currentElements) {
+				if (!observedElements.has(element)) {
+					resizeObserver?.observe(element);
+					observedElements.add(element);
+				}
+			}
+		};
 		const observeMutations = () => {
-			const sections = root.querySelectorAll('[data-preview-section]');
+			const sections = generatedSections(root);
 			if (sections.length !== preview.sections.length) measurementReady = false;
-			for (const element of root.querySelectorAll<HTMLElement>('[data-stat-block-prelude], [data-preview-section]')) resizeObserver?.observe(element);
+			syncResizeTargets();
 			scheduleMeasurement();
 		};
-		const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateMeasurement) : undefined;
 		resizeObserver?.observe(root);
-		for (const element of root.querySelectorAll<HTMLElement>('[data-stat-block-prelude], [data-preview-section]')) resizeObserver?.observe(element);
+		syncResizeTargets();
 		const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver(observeMutations) : undefined;
 		mutationObserver?.observe(root, { childList: true, subtree: true });
 		scheduleMeasurement();
 
 		return () => {
 			resizeObserver?.disconnect();
+			observedElements.clear();
 			mutationObserver?.disconnect();
 			if (measurementFrame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(measurementFrame);
 			measurementFrame = null;

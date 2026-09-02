@@ -147,6 +147,22 @@ describe('StatBlockPreview', () => {
 		}
 	});
 
+	it('ignores nested authored section markers during two-column measurement', () => {
+		const model = createPreviewModel(normalizeMonster({
+			...dragon,
+			action: [{ name: 'Nested marker', description: 'Visible text <span data-preview-section="authored">inside the action</span>.' }],
+		}));
+		mounted = mount(StatBlock, {
+			target: document.body,
+			props: { preview: model, theme: 'monster-manual-smooth', idPrefix: 'nested-marker-preview', twoColumn: true },
+		});
+		flushSync();
+
+		const article = document.querySelector<HTMLElement>('article.stat-block');
+		expect(article?.querySelector('.preview-action [data-preview-section="authored"]')).not.toBeNull();
+		expect(article?.querySelectorAll(':scope > .stat-block__panels > .stat-block__panel > [data-preview-section]')).toHaveLength(model.sections.length);
+	});
+
 	it('keeps stat block accessibility references unique per instance', () => {
 		const model = createPreviewModel(dragon);
 		const liveTarget = document.createElement('div');

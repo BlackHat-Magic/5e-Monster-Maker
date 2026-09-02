@@ -266,7 +266,7 @@ test.describe('monster authoring', () => {
 				stats: { base_ac: 15, hit_dice: 4, speed: [30, 0, 0, 0, 0], ability_scores: [10, 10, 10, 10, 10, 10] },
 				proficiencies: { challenge: 5 },
 				two_column: true,
-				ability: [{ name: 'Stored Trait', description }],
+				ability: [{ name: 'Stored Trait', description: `${description} <span data-preview-section="authored">Nested marker</span>` }],
 				action: [{ name: 'Stored Action', description }],
 				bonus_action: [{ name: 'Stored Bonus', description }],
 				reaction: [{ name: 'Stored Reaction', description }],
@@ -277,12 +277,12 @@ test.describe('monster authoring', () => {
 
 		const statBlock = page.locator('.stat-block');
 		await expect(statBlock).toHaveClass(/stat-block--two-column/);
-		await expect.poll(() => statBlock.locator('[data-preview-section]').count()).toBe(4);
+		await expect.poll(() => statBlock.locator('.stat-block__panel > [data-preview-section]').count()).toBe(4);
 		await expect(statBlock).toHaveAttribute('data-stat-block-layout', 'measured');
 		const readLayout = () => statBlock.evaluate((article) => {
 			const panels = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel')];
 			const prelude = article.querySelector<HTMLElement>('[data-stat-block-prelude]');
-			const sections = [...article.querySelectorAll<HTMLElement>('[data-preview-section]')];
+			const sections = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel > [data-preview-section]')];
 			const height = (element: HTMLElement) => {
 				const styles = getComputedStyle(element);
 				const marginTop = Number.parseFloat(styles.marginTop) || 0;
@@ -321,7 +321,7 @@ test.describe('monster authoring', () => {
 			const parsed = new DOMParser().parseFromString(markup, mime);
 			const article = parsed.querySelector<HTMLElement>('.stat-block');
 			return [...(article?.querySelectorAll<HTMLElement>('.stat-block__panel') ?? [])].map((panel) =>
-				[...panel.querySelectorAll<HTMLElement>('[data-preview-section]')].map((section) => section.dataset.previewSection));
+				[...panel.querySelectorAll<HTMLElement>(':scope > [data-preview-section]')].map((section) => section.dataset.previewSection));
 		}, { markup, mime });
 
 		for (const [format, mime] of [['HTML', 'text/html'], ['SVG', 'image/svg+xml']] as const) {
