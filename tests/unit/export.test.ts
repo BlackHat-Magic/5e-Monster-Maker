@@ -167,6 +167,28 @@ describe("monster exports", () => {
     }
   });
 
+  it("makes standalone HTML responsive while keeping standalone SVG fixed-size", () => {
+    const block = {
+      title: "Responsive Two Column",
+      ...statBlock,
+      markup: '<article class="stat-block stat-block--two-column"><div class="stat-block__panels"><div class="stat-block__panel stat-block__panel--left">Left</div><div class="stat-block__panel stat-block__panel--right">Right</div></div></article>',
+    };
+    const html = serializeStandaloneHtml(block);
+    const svg = serializeStandaloneSvg(block);
+    const responsiveRules = [
+      ".standalone-stat-block { width: 100% !important; height: auto !important; overflow: visible !important; }",
+      ".standalone-stat-block .stat-block--two-column .stat-block__panels { grid-template-columns: minmax(0, 1fr); gap: 0; }",
+    ];
+
+    for (const rule of responsiveRules) expect(html).toContain(rule);
+    expect(svg).not.toContain("width: 100% !important");
+    expect(svg).not.toContain("height: auto !important");
+    expect(svg).not.toContain("overflow: visible !important");
+    expect(svg.lastIndexOf("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)")).toBeGreaterThan(
+      svg.indexOf("grid-template-columns: minmax(0, 1fr);"),
+    );
+  });
+
   it("escapes HTML and XML metadata", () => {
     const title = `Ash & <Ember> "Prime" 's`;
     const html = serializeStandaloneHtml({ title, ...statBlock });

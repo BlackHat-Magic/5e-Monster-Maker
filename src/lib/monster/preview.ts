@@ -363,6 +363,10 @@ function estimatedLeftPreludeWeight(preview: MonsterPreview): number {
   );
 }
 
+/**
+ * Select the closest estimated boundary while preserving a whole section on each side.
+ * The minimum one-section-per-side rule intentionally wins over equal weights when the prelude is dominant.
+ */
 export function splitPreviewSections(preview: MonsterPreview): PreviewSectionColumns {
   if (preview.sections.length <= 1) return { left: preview.sections, right: [] };
 
@@ -373,6 +377,7 @@ export function splitPreviewSections(preview: MonsterPreview): PreviewSectionCol
   let splitIndex = 1;
   let smallestDifference = Number.POSITIVE_INFINITY;
 
+  // Keep one whole section on each side when the prelude dominates the estimate.
   for (let index = 1; index < preview.sections.length; index += 1) {
     leftWeight += sectionWeights[index - 1];
     const rightWeight = totalWeight - leftWeight;

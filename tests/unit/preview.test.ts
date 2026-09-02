@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeMonster } from "../../src/lib/monster/defaults";
 import { createPreviewModel, splitPreviewSections } from "../../src/lib/monster/preview";
 import type { Monster } from "../../src/lib/monster/types";
+import type { MonsterPreview } from "../../src/lib/monster/preview";
 
 const dragon: Monster = normalizeMonster({
   name: "Ancient Red Dragon",
@@ -200,6 +201,47 @@ describe("monster preview model", () => {
     expect([...first.left, ...first.right].map((section) => section.key)).toEqual(
       preview.sections.map((section) => section.key),
     );
+  });
+
+  it("keeps one whole lower section on each side when the prelude dominates", () => {
+    const longPrelude = "A dominant prelude value ".repeat(250);
+    const section = (key: "ability" | "action" | "bonus_action", title: string) => ({
+      key,
+      title,
+      intro: null,
+      items: [{
+        name: title || "Trait",
+        description: "A short lower section.",
+        markdown: "***Trait.*** A short lower section.",
+        html: "<p><strong><em>Trait.</em></strong> A short lower section.</p>",
+      }],
+    });
+    const dominantPrelude: MonsterPreview = {
+      name: { markdown: longPrelude, html: longPrelude },
+      meta: null,
+      flavor: null,
+      armorClass: { label: "Armor Class", value: longPrelude, markdown: longPrelude, html: longPrelude },
+      hitPoints: { label: "Hit Points", value: longPrelude, markdown: longPrelude, html: longPrelude },
+      speed: { label: "Speed", value: longPrelude, markdown: longPrelude, html: longPrelude },
+      abilities: [],
+      fields: [{ label: "Notes", value: longPrelude, markdown: longPrelude, html: longPrelude }],
+      challenge: {
+        challenge: "0",
+        xp: 10,
+        xpText: "10",
+        proficiencyBonus: 2,
+        proficiencyBonusText: "+2",
+        markdown: longPrelude,
+        html: longPrelude,
+      },
+      sections: [section("ability", ""), section("action", "Actions"), section("bonus_action", "Bonus Actions")],
+    };
+
+    const result = splitPreviewSections(dominantPrelude);
+
+    expect(result.left.map((item) => item.key)).toEqual(["ability"]);
+    expect(result.right.map((item) => item.key)).toEqual(["action", "bonus_action"]);
+    expect([...result.left, ...result.right]).toEqual(dominantPrelude.sections);
   });
 
   it("gates legendary and villain sections independently and keeps mythic transformation gating", () => {

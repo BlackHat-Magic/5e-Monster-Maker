@@ -362,6 +362,53 @@ test.describe('monster authoring', () => {
 		expect(content).not.toMatch(/url\(\s*["']?(?:https?:\/\/|blob:|\/)/i);
 	});
 
+	test('makes standalone HTML responsive while keeping standalone SVG fixed-size', async ({ page }) => {
+		const editorPane = page.getByRole('region', { name: 'Editor', exact: true });
+		await editorPane.getByRole('tab', { name: 'Basics', exact: true }).click();
+		await editorPane.getByRole('checkbox', { name: 'Two-column stat block', exact: true }).check();
+
+		const fileActions = page.getByRole('group', { name: 'File actions', exact: true });
+		await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
+		let exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await exportDialog.getByRole('radio', { name: 'HTML', exact: true }).click();
+		let downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		let download = await downloadPromise;
+		const html = new TextDecoder().decode(await downloadBytes(download));
+
+		const narrowPage = await page.context().newPage();
+		await narrowPage.setViewportSize({ width: 390, height: 844 });
+		await narrowPage.setContent(html);
+		const htmlLayout = await narrowPage.locator('.standalone-stat-block').evaluate((wrapper) => {
+			const styles = getComputedStyle(wrapper);
+			const panels = wrapper.querySelector<HTMLElement>('.stat-block__panels');
+			return {
+				width: Number.parseFloat(styles.width),
+				clientHeight: wrapper.clientHeight,
+				scrollHeight: wrapper.scrollHeight,
+				overflow: styles.overflow,
+				gridColumns: panels ? getComputedStyle(panels).gridTemplateColumns.trim().split(/\s+/).length : 0,
+			};
+		});
+		expect(htmlLayout.width).toBeLessThanOrEqual(390);
+		expect(htmlLayout.scrollHeight).toBeLessThanOrEqual(htmlLayout.clientHeight + 1);
+		expect(htmlLayout.overflow).toBe('visible');
+		expect(htmlLayout.gridColumns).toBe(1);
+		await narrowPage.close();
+
+		await fileActions.getByRole('button', { name: 'Export', exact: true }).click();
+		exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await exportDialog.getByRole('radio', { name: 'SVG', exact: true }).click();
+		downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		download = await downloadPromise;
+		const svg = new TextDecoder().decode(await downloadBytes(download));
+		expect(svg).toContain('viewBox="0 0');
+		expect(svg).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);');
+		expect(svg).not.toContain('width: 100% !important');
+		expect(svg).not.toContain('height: auto !important');
+	});
+
 	test('downloads a PNG visual export with binary image content', async ({ page }) => {
 		const previewPane = page.getByRole('region', { name: /^(Preview|Live stat block preview)$/i });
 		const statBlock = previewPane.locator('.stat-block');

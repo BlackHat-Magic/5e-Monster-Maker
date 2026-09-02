@@ -4,7 +4,7 @@
 
 **Goal:** Add a persisted `two_column` option in TOML and the Basics editor, with an explicit two-panel preview and visual exports.
 
-**Architecture:** Store only the user’s layout preference as `Monster.two_column`; derive the panel boundary from deterministic preview-content weights without DOM measurement or persisted split data. In two-column mode, render an explicit grid whose left panel owns the complete stat-block prelude and first whole `PreviewSection` blocks while the right panel owns the remainder. Keep one-column direct children unchanged and use the same component path for live preview and visual exports.
+**Architecture:** Store only the user’s layout preference as `Monster.two_column`; derive the panel boundary from deterministic preview-content weights without DOM measurement or persisted split data. In two-column mode, render an explicit grid whose left panel owns the complete stat-block prelude and first whole `PreviewSection` blocks while the right panel owns the remainder. The closest weight-based boundary is selected, with an invariant of one whole section per side when at least two sections exist, even if the prelude dominates. Keep one-column direct children unchanged and use the same component path for live preview and visual exports.
 
 **Tech Stack:** Svelte 5, TypeScript, CSS grid, TOML via `smol-toml`, Vitest, Playwright, Bun.
 

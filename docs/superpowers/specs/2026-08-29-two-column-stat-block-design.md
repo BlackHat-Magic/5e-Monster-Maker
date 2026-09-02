@@ -12,7 +12,9 @@ Add an optional `two_column` boolean to `Monster`. Normalization defaults missin
 
 The Basics checkbox updates the monster store. `StatBlockPreview` and the browser export renderer pass the normalized flag into `StatBlock`, which adds a two-column modifier class. One-column blocks remain capped at 400px; two-column blocks expand to 800px max and collapse to one grid column below the mobile breakpoint.
 
-In two-column mode, `StatBlock` renders an explicit panel grid. The left panel contains the complete header, core statistics, ability score table, additional fields, challenge/proficiency row, and the first lower `PreviewSection` blocks. The right panel contains the remaining complete `PreviewSection` blocks. A pure content-weight estimator selects the closest section boundary without DOM measurement; the persistence model stores only the boolean preference. One-column mode retains its existing direct-child structure, and narrow screens collapse the panel grid to one column.
+In two-column mode, `StatBlock` renders an explicit panel grid. The left panel contains the complete header, core statistics, ability score table, additional fields, challenge/proficiency row, and the first lower `PreviewSection` blocks. The right panel contains the remaining complete `PreviewSection` blocks. A pure content-weight estimator selects the closest section boundary without DOM measurement; when at least two sections exist, it always keeps one whole section on each side, so a dominant prelude may intentionally make the left panel taller rather than forcing equal heights. The persistence model stores only the boolean preference. One-column mode retains its existing direct-child structure, and normal app previews collapse the panel grid to one column at narrow widths.
+
+Standalone HTML preserves the measured wrapper at desktop widths, but its narrow-viewport media rules override the inline wrapper width, height, and clipping so the document becomes responsive and collapses to one panel column. Standalone SVG remains fixed-size and uses the measured two-panel grid regardless of viewport size.
 
 ## Verification
 
