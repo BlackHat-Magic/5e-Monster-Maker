@@ -296,4 +296,21 @@ describe("monster exports", () => {
     expect(textured).toContain("data:image/svg+xml,%3Csvg");
     expect(textured).not.toContain("data%3Aimage%2Fsvg%2Bxml");
   });
+
+  it("preserves renderer-embedded texture assets in standalone exports", () => {
+    const embeddedStyle = 'background-image: url("data:image/jpeg;base64,cGFyY2htZW50"), url("data:image/svg+xml;base64,ZmFsbGJhY2s=");';
+    const block = {
+      title: "Ash",
+      ...statBlock,
+      theme: "monster-manual-textured" as const,
+      style: embeddedStyle,
+    };
+
+    for (const output of [serializeStandaloneHtml(block), serializeStandaloneSvg(block)]) {
+      expect(output).toContain("data:image/jpeg;base64,cGFyY2htZW50");
+      expect(output).toContain("data:image/svg+xml;base64,ZmFsbGJhY2s=");
+      expect(output).not.toContain("/statblockparch.jpg");
+      expect(output).not.toContain("/statblockbar.jpg");
+    }
+  });
 });

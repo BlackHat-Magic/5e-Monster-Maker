@@ -251,6 +251,27 @@ describe("browser visual exports", () => {
     expect(result.content).toContain('href="/rules/conditions"');
   });
 
+  it("keeps the embedded Monster Manual texture in standalone visual exports", async () => {
+    const fetchResource = vi.fn(async (url: string) => ({
+      ok: true,
+      blob: async () => new Blob([url], { type: "image/jpeg" }),
+    }));
+    vi.stubGlobal("fetch", fetchResource);
+
+    const result = await renderVisualExport({
+      monster: normalizeMonster({ name: "Textured Export" }),
+      theme: "monster-manual-textured",
+      format: "svg",
+      previewWidth: 418,
+    });
+
+    expect(fetchResource).toHaveBeenCalledWith("http://localhost/statblockparch.jpg", expect.any(Object));
+    expect(fetchResource).toHaveBeenCalledWith("http://localhost/statblockbar.jpg", expect.any(Object));
+    expect(result.content).toContain("data:image/jpeg;base64");
+    expect(result.content).not.toContain("/statblockparch.jpg");
+    expect(result.content).not.toContain("/statblockbar.jpg");
+  });
+
   it("rejects external CSS imports instead of leaving them network-dependent", async () => {
     const style = document.createElement("style");
     style.textContent = '@import url("/fonts.css");';

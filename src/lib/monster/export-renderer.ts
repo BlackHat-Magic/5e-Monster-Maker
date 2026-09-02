@@ -585,7 +585,15 @@ export async function renderVisualExport({
 		const width = roundedDimension(rect.width);
 		const height = roundedDimension(rect.height);
 		const { mime } = visualFormat(format);
-		const block = { title: monster.name?.trim() || "Monster", markup: article.outerHTML, css: statBlockStyles, width, height, theme };
+        const block = {
+          title: monster.name?.trim() || "Monster",
+          markup: article.outerHTML,
+          css: statBlockStyles,
+          width,
+          height,
+          theme,
+          style: article.getAttribute("style") ?? undefined,
+        };
 
 		if (format === "html") {
 			return { content: serializeStandaloneHtml(block), mime, width, height };

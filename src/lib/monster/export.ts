@@ -23,6 +23,7 @@ export interface SerializedStatBlock {
   width: number;
   height: number;
   theme: StatBlockThemeKey;
+  style?: string;
 }
 
 type StandaloneStatBlock = SerializedStatBlock & { title: string };
@@ -67,7 +68,7 @@ function assertDimensions({ width, height }: SerializedStatBlock): void {
 }
 
 function standaloneStyle(block: SerializedStatBlock): string {
-  return statBlockThemeStyle(block.theme);
+  return block.style ?? statBlockThemeStyle(block.theme);
 }
 
 type StandaloneCssMode = "html" | "svg";
