@@ -78,6 +78,26 @@ describe('StatBlockPreview', () => {
 		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
 		expect(article?.classList.contains('stat-block--two-column')).toBe(false);
 		expect(article?.querySelector('.stat-block__body')).toBeNull();
+		expect([...article!.children].map((child) => child.classList.contains('preview-section')
+			? child.classList.contains('preview-section--traits') ? 'preview-section--traits' : 'preview-section'
+			: child.className)).toEqual([
+			'stat-block__header',
+			'stat-block__rule',
+			'stat-block__core',
+			'stat-block__rule',
+			'preview-abilities__scroll',
+			'stat-block__rule',
+			'stat-block__fields',
+			'stat-block__challenge',
+			'stat-block__rule stat-block__rule--thin',
+			'preview-section--traits',
+			'preview-section',
+			'preview-section',
+			'preview-section',
+			'preview-section',
+			'preview-section',
+			'preview-section',
+		]);
 		expect(article?.querySelector(':scope > .stat-block__fields')).not.toBeNull();
 		expect(article?.querySelector(':scope > .stat-block__challenge')).not.toBeNull();
 		expect(article?.querySelector(':scope > .stat-block__rule--thin')).not.toBeNull();
@@ -87,7 +107,7 @@ describe('StatBlockPreview', () => {
 		expect(document.querySelector('.preview-section h3')?.textContent).toBe('Actions');
 	});
 
-	it('marks two-column stat blocks and wraps only lower-flow content', () => {
+	it('renders two explicit panels and distributes only whole lower sections', () => {
 		const model = createPreviewModel(dragon);
 		mounted = mount(StatBlock, {
 			target: document.body,
@@ -96,17 +116,33 @@ describe('StatBlockPreview', () => {
 		flushSync();
 
 		const article = document.querySelector<HTMLElement>('article.stat-block');
-		const body = article?.querySelector<HTMLElement>('.stat-block__body');
+		const panels = [...(article?.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel') ?? [])];
+		const leftPanel = panels[0];
+		const rightPanel = panels[1];
 		expect(article).not.toBeNull();
 		expect(article?.classList.contains('stat-block--two-column')).toBe(true);
-		expect(body).not.toBeNull();
-		expect(article?.querySelector(':scope > .stat-block__body')).toBe(body);
-		expect(body?.querySelector('.stat-block__fields')).not.toBeNull();
-		expect(body?.querySelector('.stat-block__challenge')).not.toBeNull();
-		expect(body?.querySelector('.stat-block__rule--thin')).not.toBeNull();
-		expect(body?.querySelector('.preview-section')).not.toBeNull();
-		expect(body?.querySelector('.stat-block__abilities')).toBeNull();
-		expect(body?.previousElementSibling?.classList.contains('stat-block__rule')).toBe(true);
+		expect(panels).toHaveLength(2);
+		expect(leftPanel?.classList.contains('stat-block__panel--left')).toBe(true);
+		expect(rightPanel?.classList.contains('stat-block__panel--right')).toBe(true);
+		expect(leftPanel?.querySelector(':scope > .stat-block__header')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__core')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .preview-abilities__scroll .stat-block__abilities')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__fields')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__challenge')).not.toBeNull();
+		expect(rightPanel?.querySelector('.stat-block__header')).toBeNull();
+		expect(rightPanel?.querySelector('.stat-block__core')).toBeNull();
+		expect(rightPanel?.querySelector('.stat-block__fields')).toBeNull();
+		expect(rightPanel?.querySelector('.stat-block__challenge')).toBeNull();
+
+		const panelSectionLabels = panels.flatMap((panel) => [...panel.querySelectorAll<HTMLElement>(':scope > .preview-section')]
+			.map((section) => section.classList.contains('preview-section--traits') ? 'ability' : section.querySelector('h3')?.textContent));
+		expect(panelSectionLabels).toEqual(model.sections.map((section) => section.title || section.key));
+		expect(panels[0].querySelectorAll(':scope > .preview-section').length).toBeGreaterThan(0);
+		expect(panels[1].querySelectorAll(':scope > .preview-section').length).toBeGreaterThan(0);
+		for (const section of article?.querySelectorAll<HTMLElement>('.preview-section') ?? []) {
+			expect(section.closest('.stat-block__panel')).not.toBeNull();
+			expect(section.querySelectorAll('.preview-action').length).toBeGreaterThan(0);
+		}
 	});
 
 	it('keeps stat block accessibility references unique per instance', () => {

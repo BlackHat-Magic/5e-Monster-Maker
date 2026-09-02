@@ -75,7 +75,7 @@ function standaloneCss(block: SerializedStatBlock): string {
     ? ".standalone-stat-block .stat-block { background-image: inherit; }"
     : "";
   const standaloneLayout = `.standalone-stat-block .stat-block.stat-block--two-column { width: min(100%, 800px); }
-.standalone-stat-block .stat-block--two-column .stat-block__body { column-count: 2; }`;
+.standalone-stat-block .stat-block--two-column .stat-block__panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }`;
   const standaloneReset = `*, *::before, *::after { box-sizing: border-box; border: 0 solid; border-radius: 0 !important; margin: 0; padding: 0; }
 body { margin: 0; padding: 0; }
 .stat-block { line-height: 1.5; }

@@ -228,7 +228,7 @@ test.describe('monster authoring', () => {
 		await expect(toastRegion).toBeHidden();
 	});
 
-	test('enables and exports a balanced two-column stat block', async ({ page }) => {
+	test('enables and exports an explicit two-panel stat block', async ({ page }) => {
 		const editorPane = page.getByRole('region', { name: 'Editor', exact: true });
 		await editorPane.getByRole('tab', { name: 'Basics', exact: true }).click();
 
@@ -237,7 +237,14 @@ test.describe('monster authoring', () => {
 
 		const statBlock = page.locator('.stat-block');
 		await expect(statBlock).toHaveClass(/stat-block--two-column/);
-		await expect.poll(() => statBlock.locator('.stat-block__body').evaluate((element) => getComputedStyle(element).columnCount)).toBe('2');
+		const desktopPanels = await statBlock.locator('.stat-block__panels').evaluate((element) => ({
+			panelCount: element.querySelectorAll(':scope > .stat-block__panel').length,
+			gridColumns: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
+		}));
+		expect(desktopPanels).toEqual({ panelCount: 2, gridColumns: 2 });
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expect.poll(() => statBlock.locator('.stat-block__panels').evaluate((element) => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(1);
+		await page.setViewportSize({ width: 1280, height: 900 });
 
 		await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
 		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });

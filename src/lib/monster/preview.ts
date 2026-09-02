@@ -81,6 +81,11 @@ export interface MonsterPreview {
   sections: PreviewSection[];
 }
 
+export interface PreviewSectionColumns {
+  left: PreviewSection[];
+  right: PreviewSection[];
+}
+
 const SECTION_TITLES: Record<PreviewSectionKey, string> = {
   ability: "",
   action: "Actions",
@@ -321,6 +326,67 @@ export function sectionPreviews(monster: Monster): PreviewSection[] {
     if (section) sections.push(section);
   }
   return sections;
+}
+
+const ESTIMATED_CHARS_PER_LINE = 56;
+
+function estimatedTextWeight(value: PreviewText | null): number {
+  if (!value) return 0;
+  const lines = value.markdown.split(/\r?\n/).reduce((total, line) => {
+    const length = line.trim().length;
+    return total + (length === 0 ? 0.5 : Math.max(1, Math.ceil(length / ESTIMATED_CHARS_PER_LINE)));
+  }, 0);
+  return Math.max(1, lines);
+}
+
+function estimatedSectionWeight(section: PreviewSection): number {
+  return (
+    1 +
+    (section.title ? 1.5 : 0) +
+    estimatedTextWeight(section.intro) +
+    section.items.reduce((total, item) => total + estimatedTextWeight(item), 0)
+  );
+}
+
+function estimatedLeftPreludeWeight(preview: MonsterPreview): number {
+  return (
+    4 +
+    estimatedTextWeight(preview.name) +
+    estimatedTextWeight(preview.meta) +
+    estimatedTextWeight(preview.flavor) +
+    estimatedTextWeight(preview.armorClass) +
+    estimatedTextWeight(preview.hitPoints) +
+    estimatedTextWeight(preview.speed) +
+    2 +
+    preview.fields.reduce((total, field) => total + estimatedTextWeight(field), 0) +
+    estimatedTextWeight(preview.challenge)
+  );
+}
+
+export function splitPreviewSections(preview: MonsterPreview): PreviewSectionColumns {
+  if (preview.sections.length <= 1) return { left: preview.sections, right: [] };
+
+  const sectionWeights = preview.sections.map(estimatedSectionWeight);
+  const preludeWeight = estimatedLeftPreludeWeight(preview);
+  const totalWeight = preludeWeight + sectionWeights.reduce((total, weight) => total + weight, 0);
+  let leftWeight = preludeWeight;
+  let splitIndex = 1;
+  let smallestDifference = Number.POSITIVE_INFINITY;
+
+  for (let index = 1; index < preview.sections.length; index += 1) {
+    leftWeight += sectionWeights[index - 1];
+    const rightWeight = totalWeight - leftWeight;
+    const difference = Math.abs(leftWeight - rightWeight);
+    if (difference < smallestDifference) {
+      smallestDifference = difference;
+      splitIndex = index;
+    }
+  }
+
+  return {
+    left: preview.sections.slice(0, splitIndex),
+    right: preview.sections.slice(splitIndex),
+  };
 }
 
 function assertPreviewBrowserDom(): void {

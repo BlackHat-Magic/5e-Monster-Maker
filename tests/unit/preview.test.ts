@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { normalizeMonster } from "../../src/lib/monster/defaults";
-import { createPreviewModel } from "../../src/lib/monster/preview";
+import { createPreviewModel, splitPreviewSections } from "../../src/lib/monster/preview";
 import type { Monster } from "../../src/lib/monster/types";
 
 const dragon: Monster = normalizeMonster({
@@ -187,6 +187,19 @@ describe("monster preview model", () => {
       }),
     );
     expect(gated.sections.some((section) => section.key === "mythic_action")).toBe(false);
+  });
+
+  it("chooses a deterministic boundary between complete preview sections", () => {
+    const preview = createPreviewModel(dragon);
+    const first = splitPreviewSections(preview);
+    const second = splitPreviewSections(preview);
+
+    expect(first).toEqual(second);
+    expect(first.left.length).toBeGreaterThan(0);
+    expect(first.right.length).toBeGreaterThan(0);
+    expect([...first.left, ...first.right].map((section) => section.key)).toEqual(
+      preview.sections.map((section) => section.key),
+    );
   });
 
   it("gates legendary and villain sections independently and keeps mythic transformation gating", () => {

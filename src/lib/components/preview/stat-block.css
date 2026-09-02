@@ -248,20 +248,15 @@
   width: min(100%, 800px);
 }
 
-.stat-block--two-column .stat-block__body {
-  column-count: 2;
-  column-gap: 20px;
-  column-fill: balance;
+.stat-block--two-column .stat-block__panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
 }
 
-.stat-block--two-column .stat-block__challenge,
-.stat-block--two-column .preview-section__intro,
-.stat-block--two-column .preview-action {
-  break-inside: avoid;
-}
-
-.stat-block--two-column .preview-section h3 {
-  break-after: avoid;
+.stat-block--two-column .stat-block__panel {
+  min-width: 0;
 }
 
 @media (max-width: 720px) {
@@ -269,7 +264,8 @@
     width: min(100%, 400px);
   }
 
-  .stat-block--two-column .stat-block__body {
-    column-count: 1;
+  .stat-block--two-column .stat-block__panels {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 }
