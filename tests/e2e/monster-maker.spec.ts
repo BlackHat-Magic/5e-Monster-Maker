@@ -256,6 +256,79 @@ test.describe('monster authoring', () => {
 		expect(content).toContain('two_column = true');
 	});
 
+	test('balances populated panels using rendered section heights', async ({ page }) => {
+		await page.evaluate(() => {
+			const description = 'A measured section with enough prose to wrap differently at the real panel width. '.repeat(12);
+			localStorage.setItem('monster-maker.draft', JSON.stringify({
+				name: 'Measured Layout Warden',
+				basics: { size: 'large', type: 'construct', alignment: 'unaligned' },
+				stats: { base_ac: 15, hit_dice: 4, speed: [30, 0, 0, 0, 0], ability_scores: [10, 10, 10, 10, 10, 10] },
+				proficiencies: { challenge: 5 },
+				two_column: true,
+				ability: [{ name: 'Stored Trait', description }],
+				action: [{ name: 'Stored Action', description }],
+				bonus_action: [{ name: 'Stored Bonus', description }],
+				reaction: [{ name: 'Stored Reaction', description }],
+			}));
+		});
+		await page.reload();
+		await expect(page.getByRole('heading', { name: 'Identity', exact: true })).toBeVisible({ timeout: 15000 });
+
+		const statBlock = page.locator('.stat-block');
+		await expect(statBlock).toHaveClass(/stat-block--two-column/);
+		await expect.poll(() => statBlock.locator('[data-preview-section]').count()).toBe(4);
+		const readLayout = () => statBlock.evaluate((article) => {
+			const panels = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel')];
+			const prelude = article.querySelector<HTMLElement>('[data-stat-block-prelude]');
+			const sections = [...article.querySelectorAll<HTMLElement>('[data-preview-section]')];
+			const height = (element: HTMLElement) => element.getBoundingClientRect().height;
+			const sectionHeights = sections.map(height);
+			const preludeHeight = prelude ? height(prelude) : 0;
+			const totalHeight = preludeHeight + sectionHeights.reduce((total, value) => total + value, 0);
+			const differences = sectionHeights.map((_, index) => {
+				const leftHeight = preludeHeight + sectionHeights.slice(0, index + 1).reduce((total, value) => total + value, 0);
+				return Math.abs(leftHeight - (totalHeight - leftHeight));
+			});
+			const leftCount = panels[0]?.querySelectorAll(':scope > [data-preview-section]').length ?? 0;
+			const panelHeights = panels.map(height);
+			return {
+				leftKeys: [...(panels[0]?.querySelectorAll<HTMLElement>(':scope > [data-preview-section]') ?? [])].map((section) => section.dataset.previewSection),
+				rightKeys: [...(panels[1]?.querySelectorAll<HTMLElement>(':scope > [data-preview-section]') ?? [])].map((section) => section.dataset.previewSection),
+				panelHeights,
+				currentDifference: differences[leftCount - 1] ?? Number.POSITIVE_INFINITY,
+				bestDifference: Math.min(...differences),
+			};
+		});
+		await expect.poll(async () => {
+			const layout = await readLayout();
+			return layout.currentDifference <= layout.bestDifference + 1;
+		}).toBe(true);
+		const layout = await readLayout();
+		expect(layout.leftKeys.length).toBeGreaterThan(0);
+		expect(layout.rightKeys.length).toBeGreaterThan(0);
+		expect(layout.currentDifference).toBeLessThanOrEqual(layout.bestDifference + 1);
+		expect(Math.abs(layout.panelHeights[0] - layout.panelHeights[1])).toBeLessThan(Math.max(...layout.panelHeights) * 0.75);
+
+		const expectedPanels = { left: layout.leftKeys, right: layout.rightKeys };
+		const readExportedPanels = (markup: string, mime: DOMParserSupportedType) => page.evaluate(({ markup, mime }) => {
+			const parsed = new DOMParser().parseFromString(markup, mime);
+			const article = parsed.querySelector<HTMLElement>('.stat-block');
+			return [...(article?.querySelectorAll<HTMLElement>('.stat-block__panel') ?? [])].map((panel) =>
+				[...panel.querySelectorAll<HTMLElement>('[data-preview-section]')].map((section) => section.dataset.previewSection));
+		}, { markup, mime });
+
+		for (const [format, mime] of [['HTML', 'text/html'], ['SVG', 'image/svg+xml']] as const) {
+			await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
+			const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+			await exportDialog.getByRole('radio', { name: format, exact: true }).click();
+			const downloadPromise = page.waitForEvent('download');
+			await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+			const download = await downloadPromise;
+			const markup = new TextDecoder().decode(await downloadBytes(download));
+			expect(await readExportedPanels(markup, mime)).toEqual([expectedPanels.left, expectedPanels.right]);
+		}
+	});
+
 	test('downloads a standalone SVG visual export from the browser path', async ({ page }) => {
 		const identity = page.getByRole('region', { name: 'Identity', exact: true });
 		await identity.getByRole('textbox', { name: 'Name', exact: true }).fill('Cinder Warden');

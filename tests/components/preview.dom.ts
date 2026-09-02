@@ -78,6 +78,7 @@ describe('StatBlockPreview', () => {
 		expect(article?.style.getPropertyValue('--preview-action-name')).toBe('#000000');
 		expect(article?.classList.contains('stat-block--two-column')).toBe(false);
 		expect(article?.querySelector('.stat-block__body')).toBeNull();
+		expect(article?.querySelector('[data-preview-section]')).toBeNull();
 		expect([...article!.children].map((child) => child.classList.contains('preview-section')
 			? child.classList.contains('preview-section--traits') ? 'preview-section--traits' : 'preview-section'
 			: child.className)).toEqual([
@@ -124,11 +125,11 @@ describe('StatBlockPreview', () => {
 		expect(panels).toHaveLength(2);
 		expect(leftPanel?.classList.contains('stat-block__panel--left')).toBe(true);
 		expect(rightPanel?.classList.contains('stat-block__panel--right')).toBe(true);
-		expect(leftPanel?.querySelector(':scope > .stat-block__header')).not.toBeNull();
-		expect(leftPanel?.querySelector(':scope > .stat-block__core')).not.toBeNull();
-		expect(leftPanel?.querySelector(':scope > .preview-abilities__scroll .stat-block__abilities')).not.toBeNull();
-		expect(leftPanel?.querySelector(':scope > .stat-block__fields')).not.toBeNull();
-		expect(leftPanel?.querySelector(':scope > .stat-block__challenge')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__prelude > .stat-block__header')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__prelude > .stat-block__core')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__prelude > .preview-abilities__scroll .stat-block__abilities')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__prelude > .stat-block__fields')).not.toBeNull();
+		expect(leftPanel?.querySelector(':scope > .stat-block__prelude > .stat-block__challenge')).not.toBeNull();
 		expect(rightPanel?.querySelector('.stat-block__header')).toBeNull();
 		expect(rightPanel?.querySelector('.stat-block__core')).toBeNull();
 		expect(rightPanel?.querySelector('.stat-block__fields')).toBeNull();

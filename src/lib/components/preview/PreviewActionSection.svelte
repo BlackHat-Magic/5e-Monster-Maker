@@ -4,13 +4,14 @@
 	type Props = {
 		section: PreviewSection;
 		idPrefix: string;
+		measured?: boolean;
 	};
 
-	let { section, idPrefix }: Props = $props();
+	let { section, idPrefix, measured = false }: Props = $props();
 	let headingId = $derived(`${idPrefix}-heading-${section.key}`);
 </script>
 
-<section class:preview-section--traits={section.key === 'ability'} class="preview-section" aria-labelledby={section.key === 'ability' ? undefined : headingId} aria-label={section.key === 'ability' ? 'Traits' : undefined}>
+<section class:preview-section--traits={section.key === 'ability'} class="preview-section" data-preview-section={measured ? section.key : undefined} aria-labelledby={section.key === 'ability' ? undefined : headingId} aria-label={section.key === 'ability' ? 'Traits' : undefined}>
 	{#if section.title}
 		<h3 id={headingId}>{section.title}</h3>
 	{/if}

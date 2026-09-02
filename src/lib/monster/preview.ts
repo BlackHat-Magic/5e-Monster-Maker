@@ -368,18 +368,35 @@ function estimatedLeftPreludeWeight(preview: MonsterPreview): number {
  * The minimum one-section-per-side rule intentionally wins over equal weights when the prelude is dominant.
  */
 export function splitPreviewSections(preview: MonsterPreview): PreviewSectionColumns {
+  return splitPreviewSectionsByWeights(
+    preview,
+    estimatedLeftPreludeWeight(preview),
+    preview.sections.map(estimatedSectionWeight),
+  );
+}
+
+export function splitPreviewSectionsByWeights(
+  preview: MonsterPreview,
+  preludeWeight: number,
+  sectionWeights: readonly number[],
+): PreviewSectionColumns {
   if (preview.sections.length <= 1) return { left: preview.sections, right: [] };
 
-  const sectionWeights = preview.sections.map(estimatedSectionWeight);
-  const preludeWeight = estimatedLeftPreludeWeight(preview);
-  const totalWeight = preludeWeight + sectionWeights.reduce((total, weight) => total + weight, 0);
-  let leftWeight = preludeWeight;
+  const safePreludeWeight = Number.isFinite(preludeWeight) && preludeWeight >= 0
+    ? preludeWeight
+    : estimatedLeftPreludeWeight(preview);
+  const safeSectionWeights = preview.sections.map((section, index) => {
+    const weight = sectionWeights[index];
+    return Number.isFinite(weight) && weight >= 0 ? weight : estimatedSectionWeight(section);
+  });
+  const totalWeight = safePreludeWeight + safeSectionWeights.reduce((total, weight) => total + weight, 0);
+  let leftWeight = safePreludeWeight;
   let splitIndex = 1;
   let smallestDifference = Number.POSITIVE_INFINITY;
 
   // Keep one whole section on each side when the prelude dominates the estimate.
   for (let index = 1; index < preview.sections.length; index += 1) {
-    leftWeight += sectionWeights[index - 1];
+    leftWeight += safeSectionWeights[index - 1];
     const rightWeight = totalWeight - leftWeight;
     const difference = Math.abs(leftWeight - rightWeight);
     if (difference < smallestDifference) {

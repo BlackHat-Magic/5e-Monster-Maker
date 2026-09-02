@@ -526,6 +526,7 @@ export async function renderVisualExport({
 		});
 		flushSync();
 		await waitForAnimationFrame(signal);
+		if (monster.two_column) await waitForAnimationFrame(signal);
 
 		const article = container.querySelector<HTMLElement>("article.stat-block");
 		if (!article) throw new Error("Rendered stat block article was not found");

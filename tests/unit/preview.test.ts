@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { normalizeMonster } from "../../src/lib/monster/defaults";
-import { createPreviewModel, splitPreviewSections } from "../../src/lib/monster/preview";
+import { createPreviewModel, splitPreviewSections, splitPreviewSectionsByWeights } from "../../src/lib/monster/preview";
 import type { Monster } from "../../src/lib/monster/types";
 import type { MonsterPreview } from "../../src/lib/monster/preview";
 
@@ -218,6 +218,23 @@ describe("monster preview model", () => {
     expect([...first.left, ...first.right].map((section) => section.key)).toEqual(
       preview.sections.map((section) => section.key),
     );
+  });
+
+  it("allows measured section heights to choose a different boundary than the estimate", () => {
+    const sections: MonsterPreview["sections"] = [
+      { key: "ability", title: "", intro: null, items: [] },
+      { key: "action", title: "Actions", intro: null, items: [] },
+      { key: "reaction", title: "Reactions", intro: null, items: [] },
+      { key: "bonus_action", title: "Bonus Actions", intro: null, items: [] },
+    ];
+    const preview = previewForSections(sections);
+    const estimated = splitPreviewSections(preview);
+    const measured = splitPreviewSectionsByWeights(preview, 1, [1, 1, 1, 100]);
+
+    expect(estimated.left.length).not.toBe(measured.left.length);
+    expect(measured.left.map((section) => section.key)).toEqual(["ability", "action", "reaction"]);
+    expect(measured.right.map((section) => section.key)).toEqual(["bonus_action"]);
+    expect([...measured.left, ...measured.right]).toEqual(sections);
   });
 
   it("keeps an empty section list empty", () => {
