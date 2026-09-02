@@ -96,7 +96,7 @@ describe("browser visual exports", () => {
     expect(statBlockStyles).toContain(".stat-block");
   });
 
-  it("measures the rendered stat block without surrounding canvas", async () => {
+	it("measures the rendered stat block without surrounding canvas", async () => {
     const result = await renderVisualExport({
       monster: normalizeMonster({ name: "Boundary Test" }),
       theme: "monster-manual-smooth",
@@ -109,8 +109,19 @@ describe("browser visual exports", () => {
     expect(result.content).toContain('viewBox="0 0 418 232"');
     expect(result.content).not.toMatch(/<canvas\b/);
     expect(rafCalls).toBe(1);
-    expect(measuredArticle).toBeDefined();
-  });
+		expect(measuredArticle).toBeDefined();
+	});
+
+	it("serializes a two-column export only after layout measurement is ready", async () => {
+		const result = await renderVisualExport({
+			monster: normalizeMonster({ name: "Measured Export", two_column: true }),
+			theme: "monster-manual-smooth",
+			format: "html",
+			previewWidth: 418,
+		});
+
+		expect(result.content).toContain('data-stat-block-layout="measured"');
+	});
 
   it("waits for mounted images to finish loading before measuring", async () => {
     const image = document.createElement("img");

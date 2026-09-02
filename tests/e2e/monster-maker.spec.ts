@@ -228,7 +228,7 @@ test.describe('monster authoring', () => {
 		await expect(toastRegion).toBeHidden();
 	});
 
-	test('enables and exports an explicit two-panel stat block', async ({ page }) => {
+		test('enables and exports an explicit two-panel stat block', async ({ page }) => {
 		const editorPane = page.getByRole('region', { name: 'Editor', exact: true });
 		await editorPane.getByRole('tab', { name: 'Basics', exact: true }).click();
 
@@ -237,6 +237,7 @@ test.describe('monster authoring', () => {
 
 		const statBlock = page.locator('.stat-block');
 		await expect(statBlock).toHaveClass(/stat-block--two-column/);
+		await expect(statBlock).toHaveAttribute('data-stat-block-layout', 'measured');
 		const desktopPanels = await statBlock.locator('.stat-block__panels').evaluate((element) => ({
 			panelCount: element.querySelectorAll(':scope > .stat-block__panel').length,
 			gridColumns: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
@@ -277,11 +278,17 @@ test.describe('monster authoring', () => {
 		const statBlock = page.locator('.stat-block');
 		await expect(statBlock).toHaveClass(/stat-block--two-column/);
 		await expect.poll(() => statBlock.locator('[data-preview-section]').count()).toBe(4);
+		await expect(statBlock).toHaveAttribute('data-stat-block-layout', 'measured');
 		const readLayout = () => statBlock.evaluate((article) => {
 			const panels = [...article.querySelectorAll<HTMLElement>(':scope > .stat-block__panels > .stat-block__panel')];
 			const prelude = article.querySelector<HTMLElement>('[data-stat-block-prelude]');
 			const sections = [...article.querySelectorAll<HTMLElement>('[data-preview-section]')];
-			const height = (element: HTMLElement) => element.getBoundingClientRect().height;
+			const height = (element: HTMLElement) => {
+				const styles = getComputedStyle(element);
+				const marginTop = Number.parseFloat(styles.marginTop) || 0;
+				const marginBottom = Number.parseFloat(styles.marginBottom) || 0;
+				return element.getBoundingClientRect().height + marginTop + marginBottom;
+			};
 			const sectionHeights = sections.map(height);
 			const preludeHeight = prelude ? height(prelude) : 0;
 			const totalHeight = preludeHeight + sectionHeights.reduce((total, value) => total + value, 0);

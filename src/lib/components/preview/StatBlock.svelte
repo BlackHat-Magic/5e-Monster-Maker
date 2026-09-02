@@ -15,6 +15,7 @@
 	let { preview, theme, idPrefix, twoColumn = false }: Props = $props();
 	let estimatedColumns = $derived(splitPreviewSections(preview));
 	let measuredColumns = $state<PreviewSectionColumns | null>(null);
+	let measurementReady = $state(false);
 	let sectionColumns = $derived(measuredColumns ?? estimatedColumns);
 	let panelsElement = $state<HTMLElement | null>(null);
 	let measurementFrame: number | null = null;
@@ -32,7 +33,11 @@
 	}
 
 	function renderedHeight(element: HTMLElement): number {
-		return element.getBoundingClientRect().height;
+		const rect = element.getBoundingClientRect();
+		const styles = getComputedStyle(element);
+		const marginTop = Number.parseFloat(styles.marginTop) || 0;
+		const marginBottom = Number.parseFloat(styles.marginBottom) || 0;
+		return rect.height + marginTop + marginBottom;
 	}
 
 	function measureSectionColumns(root: HTMLElement): void {
@@ -46,6 +51,7 @@
 			return element ? renderedHeight(element) : Number.NaN;
 		});
 		setSectionColumns(splitPreviewSectionsByWeights(preview, renderedHeight(prelude), sectionWeights));
+		measurementReady = true;
 	}
 
 	function scheduleMeasurement(): void {
@@ -60,23 +66,42 @@
 		const currentPreview = preview;
 		const currentTwoColumn = twoColumn;
 		const root = panelsElement;
-		if (!currentTwoColumn || !root) return;
+		if (!currentTwoColumn) {
+			measuredColumns = null;
+			measurementReady = false;
+			return;
+		}
+		if (!root) return;
 		measuredColumns = null;
+		measurementReady = false;
 		scheduleMeasurement();
 	});
 
 	$effect(() => {
 		const root = panelsElement;
 		const currentTwoColumn = twoColumn;
-		if (!currentTwoColumn || !root || typeof ResizeObserver !== 'function') return;
+		if (!currentTwoColumn || !root) return;
 
-		const observer = new ResizeObserver(() => scheduleMeasurement());
-		observer.observe(root);
-		for (const element of root.querySelectorAll<HTMLElement>('[data-stat-block-prelude], [data-preview-section]')) observer.observe(element);
+		const invalidateMeasurement = () => {
+			measurementReady = false;
+			scheduleMeasurement();
+		};
+		const observeMutations = () => {
+			const sections = root.querySelectorAll('[data-preview-section]');
+			if (sections.length !== preview.sections.length) measurementReady = false;
+			for (const element of root.querySelectorAll<HTMLElement>('[data-stat-block-prelude], [data-preview-section]')) resizeObserver?.observe(element);
+			scheduleMeasurement();
+		};
+		const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateMeasurement) : undefined;
+		resizeObserver?.observe(root);
+		for (const element of root.querySelectorAll<HTMLElement>('[data-stat-block-prelude], [data-preview-section]')) resizeObserver?.observe(element);
+		const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver(observeMutations) : undefined;
+		mutationObserver?.observe(root, { childList: true, subtree: true });
 		scheduleMeasurement();
 
 		return () => {
-			observer.disconnect();
+			resizeObserver?.disconnect();
+			mutationObserver?.disconnect();
 			if (measurementFrame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(measurementFrame);
 			measurementFrame = null;
 		};
@@ -124,7 +149,7 @@
 	{/each}
 {/snippet}
 
-<article class="stat-block" class:stat-block--two-column={twoColumn} aria-labelledby={`${idPrefix}-stat-block-name`} data-stat-block-theme={theme} style={statBlockThemeStyle(theme)}>
+<article class="stat-block" class:stat-block--two-column={twoColumn} aria-labelledby={`${idPrefix}-stat-block-name`} data-stat-block-theme={theme} data-stat-block-layout={twoColumn ? (measurementReady ? 'measured' : 'estimated') : undefined} style={statBlockThemeStyle(theme)}>
 	{#if twoColumn}
 		<div class="stat-block__panels" bind:this={panelsElement}>
 			<div class="stat-block__panel stat-block__panel--left">

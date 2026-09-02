@@ -103,6 +103,53 @@ function waitForAnimationFrame(signal?: AbortSignal): Promise<void> {
 	});
 }
 
+function waitForMeasuredStatBlock(article: HTMLElement, signal?: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		let frameId: number | undefined;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		let settled = false;
+
+		const cleanup = () => {
+			if (timeoutId !== undefined) clearTimeout(timeoutId);
+			if (frameId !== undefined && typeof cancelAnimationFrame === "function") cancelAnimationFrame(frameId);
+			observer?.disconnect();
+			signal?.removeEventListener("abort", onAbort);
+		};
+		const finish = (error?: Error) => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			if (error) reject(error);
+			else resolve();
+		};
+		const onAbort = () => finish(abortError());
+		const check = () => {
+			if (article.dataset.statBlockLayout === "measured") finish();
+		};
+		const observer = typeof MutationObserver === "function" ? new MutationObserver(check) : undefined;
+
+		if (signal?.aborted) {
+			finish(abortError());
+			return;
+		}
+		if (!observer) {
+			finish(new Error("Unable to wait for stat block layout measurement"));
+			return;
+		}
+		signal?.addEventListener("abort", onAbort, { once: true });
+		observer.observe(article, { attributes: true, attributeFilter: ["data-stat-block-layout"] });
+		timeoutId = setTimeout(() => finish(new Error("Timed out waiting for stat block layout measurement")), EXPORT_ASYNC_TIMEOUT_MS);
+		try {
+			frameId = requestAnimationFrame(() => {
+				frameId = undefined;
+				check();
+			});
+		} catch (error) {
+			finish(error instanceof Error ? error : new Error("Unable to schedule stat block layout measurement"));
+		}
+	});
+}
+
 function errorText(error: unknown, fallback: string): string {
 	return error instanceof Error ? error.message : fallback;
 }
@@ -526,13 +573,13 @@ export async function renderVisualExport({
 		});
 		flushSync();
 		await waitForAnimationFrame(signal);
-		if (monster.two_column) await waitForAnimationFrame(signal);
 
 		const article = container.querySelector<HTMLElement>("article.stat-block");
 		if (!article) throw new Error("Rendered stat block article was not found");
 		await embedResources(article, signal);
 		await waitForImages(article, signal);
 		await waitForFonts(signal);
+		if (monster.two_column) await waitForMeasuredStatBlock(article, signal);
 
 		const rect = article.getBoundingClientRect();
 		const width = roundedDimension(rect.width);

@@ -122,6 +122,7 @@ describe('StatBlockPreview', () => {
 		const rightPanel = panels[1];
 		expect(article).not.toBeNull();
 		expect(article?.classList.contains('stat-block--two-column')).toBe(true);
+		expect(article?.getAttribute('data-stat-block-layout')).toBe('estimated');
 		expect(panels).toHaveLength(2);
 		expect(leftPanel?.classList.contains('stat-block__panel--left')).toBe(true);
 		expect(rightPanel?.classList.contains('stat-block__panel--right')).toBe(true);
