@@ -150,6 +150,22 @@ describe("monster exports", () => {
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("parsererror")).toBeNull();
   });
 
+  it("preserves two-column layout rules in standalone HTML and SVG CSS", () => {
+    const block = {
+      title: "Two Column",
+      ...statBlock,
+      markup: '<article class="stat-block stat-block--two-column"><div class="stat-block__body">Content</div></article>',
+    };
+    const expectedRules = [
+      ".standalone-stat-block .stat-block.stat-block--two-column { width: min(100%, 800px); }",
+      ".standalone-stat-block .stat-block--two-column .stat-block__body { column-count: 2; }",
+    ];
+
+    for (const output of [serializeStandaloneHtml(block), serializeStandaloneSvg(block)]) {
+      for (const rule of expectedRules) expect(output).toContain(rule);
+    }
+  });
+
   it("escapes HTML and XML metadata", () => {
     const title = `Ash & <Ember> "Prime" 's`;
     const html = serializeStandaloneHtml({ title, ...statBlock });

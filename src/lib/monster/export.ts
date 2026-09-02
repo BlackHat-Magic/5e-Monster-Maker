@@ -74,6 +74,8 @@ function standaloneCss(block: SerializedStatBlock): string {
   const textureRule = statBlockThemeByKey[block.theme].texture
     ? ".standalone-stat-block .stat-block { background-image: inherit; }"
     : "";
+  const standaloneLayout = `.standalone-stat-block .stat-block.stat-block--two-column { width: min(100%, 800px); }
+.standalone-stat-block .stat-block--two-column .stat-block__body { column-count: 2; }`;
   const standaloneReset = `*, *::before, *::after { box-sizing: border-box; border: 0 solid; border-radius: 0 !important; margin: 0; padding: 0; }
 body { margin: 0; padding: 0; }
 .stat-block { line-height: 1.5; }
@@ -85,7 +87,7 @@ img, video { max-width: 100%; height: auto; }
 button, input, select, textarea, optgroup { font: inherit; }
 button, input, select, textarea { color: inherit; }`;
   const standaloneFontFallback = ':root { --font-copy: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif; --font-display: "Noto Serif", "Merriweather", Georgia, "Times New Roman", serif; }';
-  return `${standaloneReset}\n${standaloneFontFallback}\n${block.css}\n${textureRule}`;
+  return `${standaloneReset}\n${standaloneFontFallback}\n${block.css}\n${standaloneLayout}\n${textureRule}`;
 }
 
 function tagEnd(markup: string, start: number): number {
