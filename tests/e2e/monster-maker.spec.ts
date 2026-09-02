@@ -228,6 +228,27 @@ test.describe('monster authoring', () => {
 		await expect(toastRegion).toBeHidden();
 	});
 
+	test('enables and exports a balanced two-column stat block', async ({ page }) => {
+		const editorPane = page.getByRole('region', { name: 'Editor', exact: true });
+		await editorPane.getByRole('tab', { name: 'Basics', exact: true }).click();
+
+		const toggle = editorPane.getByRole('checkbox', { name: 'Two-column stat block', exact: true });
+		await toggle.check();
+
+		const statBlock = page.locator('.stat-block');
+		await expect(statBlock).toHaveClass(/stat-block--two-column/);
+		await expect.poll(() => statBlock.locator('.stat-block__body').evaluate((element) => getComputedStyle(element).columnCount)).toBe('2');
+
+		await page.getByRole('group', { name: 'File actions', exact: true }).getByRole('button', { name: 'Export', exact: true }).click();
+		const exportDialog = page.getByRole('dialog', { name: 'Export stat block', exact: true });
+		await exportDialog.getByRole('radio', { name: 'TOML', exact: true }).click();
+		const downloadPromise = page.waitForEvent('download');
+		await exportDialog.getByRole('button', { name: 'Export', exact: true }).click();
+		const download = await downloadPromise;
+		const content = new TextDecoder().decode(await downloadBytes(download));
+		expect(content).toContain('two_column = true');
+	});
+
 	test('downloads a standalone SVG visual export from the browser path', async ({ page }) => {
 		const identity = page.getByRole('region', { name: 'Identity', exact: true });
 		await identity.getByRole('textbox', { name: 'Name', exact: true }).fill('Cinder Warden');

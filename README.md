@@ -119,6 +119,14 @@ TOML is the portable file format for moving a monster between browsers, machines
 
 The importer accepts TOML tables matching that schema. Unknown keys are ignored with warnings, while invalid types, enum values, array shapes, or required action fields are replaced, dropped, or reported with warnings where possible. Malformed TOML, a non-table TOML root, an unreadable file, or an import larger than 5 MiB produces an error and leaves the current draft unchanged. This release does not claim import/export compatibility with Tetra-Cube, Improved Initiative, JSON, or GMBinder files.
 
+The Basics editor can persist an automatically balanced two-column stat block with the top-level TOML flag:
+
+```toml
+two_column = true
+```
+
+When enabled, lower stat-block content flows across two columns while the header, core statistics, and ability scores remain full width. The layout returns to one column on narrow screens.
+
 Visual exports are available in PNG, WebP, AVIF, SVG, and standalone HTML in addition to TOML. The preview theme is independent from the site theme, although changing the site theme synchronizes the preview. The Monster Manual smooth theme is CSS-only, while the textured theme embeds texture data. The export dialog theme is independent and defaults to the current preview theme. WebP and AVIF controls are disabled when browser encoding is unavailable. HTML and SVG embed their CSS for offline use, and textured Monster Manual HTML/SVG exports also embed texture data. Visual files are cropped to the stat-block boundaries.
 
 ## Testing
