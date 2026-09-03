@@ -164,7 +164,9 @@
 	<Popover.Portal>
  	<Popover.Content side="top" sideOffset={8} collisionPadding={16} forceMount onOpenAutoFocus={keepFocus} onCloseAutoFocus={keepFocus}>
 			{#snippet child({ wrapperProps, props, open })}
-				<div {...wrapperProps}>
+				<!-- data-help-state mirrors the popover so the closed portal wrapper
+				can never intercept clicks meant for nearby inputs and dropdowns. -->
+				<div {...wrapperProps} data-help-state={open ? 'open' : 'closed'}>
 					<div {...props} id={helpId} class="field-help__content" data-field-help-content={helpId}>
 						<p>{help}</p>
 						{#if open}
@@ -187,6 +189,8 @@
 	.field-help__content { z-index: 70; width: min(320px, calc(100vw - 32px)); border: 1px solid var(--border); background: var(--card); padding: 15px 16px; color: var(--foreground); box-shadow: 9px 9px 0 color-mix(in srgb, var(--foreground) 10%, transparent); font-size: 0.78rem; line-height: 1.5; opacity: 0; transform: translateY(4px); transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms; }
 	.field-help__content[data-state="open"] { visibility: visible; opacity: 1; transform: translateY(0); transition-delay: 0s; }
 	.field-help__content[data-state="closed"] { visibility: hidden; pointer-events: none; }
+	div[data-help-state="closed"] { visibility: hidden !important; pointer-events: none !important; }
+	div[data-help-state="open"] { pointer-events: auto; }
 	.field-help__content :global(p) { margin: 0; color: var(--muted-foreground); }
 	.field-help__content :global(a) { display: inline-block; margin-top: 9px; color: var(--accent); font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; }
 	@media (prefers-reduced-motion: reduce) { .field-help__content { transition: none; } }

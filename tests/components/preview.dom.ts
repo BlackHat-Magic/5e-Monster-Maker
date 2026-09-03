@@ -297,13 +297,16 @@ describe('StatBlockPreview', () => {
 		expect(field?.querySelector('strong')?.textContent).toBe('Notes');
 	});
 
-	it('updates from the live normalized monster store', () => {
+	it('updates from the live normalized monster store', async () => {
 		mounted = mount(StatBlockPreview, { target: document.body });
 		replaceMonster(dragon);
+		// The live preview debounces store updates; wait out the pause.
+		await new Promise((resolve) => setTimeout(resolve, 150));
 		flushSync();
 		expect(document.querySelector('h2')?.textContent).toContain('Ancient Red Dragon');
 
 		replaceMonster({ ...dragon, name: 'Ashen Wyrm' });
+		await new Promise((resolve) => setTimeout(resolve, 150));
 		flushSync();
 		expect(document.querySelector('h2')?.textContent).toContain('Ashen Wyrm');
 	});

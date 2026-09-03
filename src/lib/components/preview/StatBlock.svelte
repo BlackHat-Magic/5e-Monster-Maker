@@ -19,8 +19,13 @@
 	let measurementReady = $state(false);
 	let sweepIndex = $state<number | null>(null);
 	let sweepColumns = $derived(sweepIndex === null ? null : candidateColumns[sweepIndex] ?? null);
-	let sectionColumns = $derived(measuredColumns ?? sweepColumns ?? estimatedColumns);
+	// Visible columns only ever show the cheap estimate or the last finished
+	// measurement. In-progress sweep candidates render in a hidden sandbox so
+	// typing never commits N intermediate layouts to the visible DOM.
+	let sectionColumns = $derived(measuredColumns ?? estimatedColumns);
 	let panelsElement = $state<HTMLElement | null>(null);
+	let measureElement = $state<HTMLElement | null>(null);
+	let measureIdPrefix = $derived(`${idPrefix}-measure`);
 	let measurementFrame: number | null = null;
 	let measurementGeneration = 0;
 	let measuredDifferences: number[] = [];
@@ -37,8 +42,8 @@
 		const generation = measurementGeneration;
 		measurementFrame = requestAnimationFrame(() => {
 			measurementFrame = null;
-			if (generation !== measurementGeneration || !panelsElement) return;
-			measureCandidate(panelsElement);
+			if (generation !== measurementGeneration) return;
+			measureHidden();
 		});
 	}
 
@@ -55,8 +60,8 @@
 		}, 0);
 	}
 
-	function measureCandidate(root: HTMLElement): void {
-		if (!twoColumn) return;
+	function measureHidden(): void {
+		if (!twoColumn || !panelsElement) return;
 		const candidates = candidateColumns;
 		if (sweepIndex === null) {
 			if (candidates.length === 0) finishMeasurement(candidates);
@@ -72,14 +77,20 @@
 			scheduleMeasurement();
 			return;
 		}
-		const leftPanel = root.querySelector<HTMLElement>(':scope > .stat-block__panel--left');
-		const rightPanel = root.querySelector<HTMLElement>(':scope > .stat-block__panel--right');
-		if (!leftPanel || !rightPanel) {
+		// Measure the hidden sandbox copy, never the visible panels, so the page
+		// does not jump through every candidate split on the way to the final one.
+		const host = measureElement;
+		if (!host) {
 			scheduleMeasurement();
 			return;
 		}
-		const leftHeight = leftPanel.getBoundingClientRect().height;
-		const rightHeight = rightPanel.getBoundingClientRect().height;
+		const panels = host.querySelectorAll<HTMLElement>(':scope > .stat-block__measure-panels > .stat-block__measure-panel');
+		if (panels.length !== 2) {
+			scheduleMeasurement();
+			return;
+		}
+		const leftHeight = panels[0].getBoundingClientRect().height;
+		const rightHeight = panels[1].getBoundingClientRect().height;
 		if (!Number.isFinite(leftHeight) || !Number.isFinite(rightHeight)) {
 			scheduleMeasurement();
 			return;
@@ -167,9 +178,9 @@
 	});
 </script>
 
-{#snippet header()}
+{#snippet header(prefix: string)}
 	<header class="stat-block__header">
-		<h2 id={`${idPrefix}-stat-block-name`}>{@html inlineHtml(preview.name)}</h2>
+		<h2 id={`${prefix}-stat-block-name`}>{@html inlineHtml(preview.name)}</h2>
 		{#if preview.meta}
 			<div class="stat-block__meta">{@html preview.meta.html}</div>
 		{/if}
@@ -202,9 +213,9 @@
 
 {/snippet}
 
-	{#snippet sectionFlow(sections: PreviewSection[], measured: boolean)}
+	{#snippet sectionFlow(sections: PreviewSection[], measured: boolean, prefix: string)}
 	{#each sections as section (section.key + ':' + (section.fragmentStart ?? 0))}
-		<PreviewActionSection {section} {idPrefix} {measured} />
+		<PreviewActionSection {section} idPrefix={prefix} {measured} />
 	{/each}
 {/snippet}
 
@@ -213,7 +224,7 @@
 		<div class="stat-block__panels" bind:this={panelsElement}>
 			<div class="stat-block__panel stat-block__panel--left">
 				<div class="stat-block__prelude" data-stat-block-prelude>
-					{@render header()}
+					{@render header(idPrefix)}
 					<div class="stat-block__rule" aria-hidden="true"></div>
 					{@render coreStats()}
 					<div class="stat-block__rule" aria-hidden="true"></div>
@@ -221,20 +232,54 @@
 					<div class="stat-block__rule" aria-hidden="true"></div>
 					{@render lowerPrelude()}
 				</div>
-				{@render sectionFlow(sectionColumns.left, true)}
+				{@render sectionFlow(sectionColumns.left, true, idPrefix)}
 			</div>
 			<div class="stat-block__panel stat-block__panel--right">
-				{@render sectionFlow(sectionColumns.right, true)}
+				{@render sectionFlow(sectionColumns.right, true, idPrefix)}
 			</div>
 		</div>
 	{:else}
-		{@render header()}
+		{@render header(idPrefix)}
 		<div class="stat-block__rule" aria-hidden="true"></div>
 		{@render coreStats()}
 		<div class="stat-block__rule" aria-hidden="true"></div>
 		<AbilityTable abilities={preview.abilities} {idPrefix} />
 		<div class="stat-block__rule" aria-hidden="true"></div>
 		{@render lowerPrelude()}
-		{@render sectionFlow(preview.sections, false)}
+		{@render sectionFlow(preview.sections, false, idPrefix)}
+	{/if}
+	{#if twoColumn && sweepColumns}
+		<!-- Hidden sandbox: every candidate split is measured here off-flow so the
+			visible panels only commit the estimated split, then the final winner. -->
+		<div class="stat-block__measure" bind:this={measureElement} aria-hidden="true">
+			<div class="stat-block__measure-panels">
+				<div class="stat-block__measure-panel">
+					<div class="stat-block__prelude">
+						{@render header(measureIdPrefix)}
+						<div class="stat-block__rule" aria-hidden="true"></div>
+						{@render coreStats()}
+						<div class="stat-block__rule" aria-hidden="true"></div>
+						<AbilityTable abilities={preview.abilities} idPrefix={measureIdPrefix} />
+						<div class="stat-block__rule" aria-hidden="true"></div>
+						{@render lowerPrelude()}
+					</div>
+					{@render sectionFlow(sweepColumns.left, false, measureIdPrefix)}
+				</div>
+				<div class="stat-block__measure-panel">
+					{@render sectionFlow(sweepColumns.right, false, measureIdPrefix)}
+				</div>
+			</div>
+		</div>
 	{/if}
 </article>
+
+<style>
+	/* Zero-height sandbox: children still lay out at full panel width for
+	measurement, but contribute nothing to the page so typing cannot jump it. */
+	.stat-block__measure { height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+	.stat-block__measure-panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+	.stat-block__measure-panel { min-width: 0; }
+	@media (max-width: 720px) {
+		.stat-block__measure-panels { grid-template-columns: minmax(0, 1fr); gap: 0; }
+	}
+</style>
