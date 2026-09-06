@@ -67,7 +67,9 @@ describe("stat-block themes", () => {
     expect(svg).toContain('id="paper-wash"');
     expect(new DOMParser().parseFromString(svg, "image/svg+xml").querySelector("parsererror")).toBeNull();
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("background-image");
-    expect(statBlockThemeStyle("monster-manual-textured")).toContain('url("/statblockparch.jpg")');
+    expect(statBlockThemeStyle("monster-manual-textured")).toContain(
+      'image-set(url("/statblockparch.avif") type("image/avif"), url("/statblockparch.jpg") type("image/jpeg"))',
+    );
     expect(statBlockThemeStyle("monster-manual-smooth")).not.toContain("background-image");
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-copy: \"Noto Sans\"");
     expect(statBlockThemeStyle("monster-manual-textured")).toContain("--font-display: \"Libre Baskerville\"");
@@ -108,6 +110,19 @@ describe("stat-block themes", () => {
     for (const [key, colors] of Object.entries(expectedSitePreviewColors)) {
       expect(statBlockThemeByKey[key as keyof typeof statBlockThemeByKey].colors).toMatchObject(colors);
     }
+  });
+
+  it("serves AVIF-first parchment with a JPEG fallback via image-set", () => {
+    const style = statBlockThemeStyle("monster-manual-textured");
+    const avifIndex = style.indexOf('url("/statblockparch.avif")');
+    const jpegIndex = style.indexOf('url("/statblockparch.jpg")');
+    expect(avifIndex).toBeGreaterThanOrEqual(0);
+    expect(jpegIndex).toBeGreaterThan(avifIndex);
+    expect(style).toContain('type("image/avif")');
+    expect(style).toContain('type("image/jpeg")');
+    // Deterministic with no environment branching: the browser picks a
+    // decodable format from the single declaration.
+    expect(style).toBe(statBlockThemeStyle("monster-manual-textured"));
   });
 
   it("rejects invalid and prototype values as stat-block theme keys", () => {

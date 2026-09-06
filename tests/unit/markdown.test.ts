@@ -34,3 +34,51 @@ describe("markdown preview sanitization", () => {
     expect(html).not.toContain("onerror");
   });
 });
+
+describe("markdown subset renderer", () => {
+  const monster = normalizeMonster({});
+
+  it("renders bold, italic, and bold-italic lead-ins used by stat blocks", () => {
+    expect(markdownToHtml("**Armor Class** 22", monster)).toBe("<p><strong>Armor Class</strong> 22</p>\n");
+    expect(markdownToHtml("*gargantuan dragon, chaotic evil*", monster)).toBe(
+      "<p><em>gargantuan dragon, chaotic evil</em></p>\n",
+    );
+    expect(markdownToHtml("***Claw.*** Melee Weapon Attack.", monster)).toBe(
+      "<p><strong><em>Claw.</em></strong> Melee Weapon Attack.</p>\n",
+    );
+  });
+
+  it("renders unordered and ordered lists used by generated descriptions", () => {
+    expect(markdownToHtml("- One\n- Two", monster)).toBe("<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n");
+    expect(markdownToHtml("1. First\n2. Second", monster)).toBe("<ol>\n<li>First</li>\n<li>Second</li>\n</ol>\n");
+  });
+
+  it("renders code spans, links, and images", () => {
+    expect(markdownToHtml("`+5 to hit`", monster)).toBe("<p><code>+5 to hit</code></p>\n");
+    expect(markdownToHtml("[darkness](https://example.com/darkness)", monster)).toBe(
+      '<p><a href="https://example.com/darkness">darkness</a></p>\n',
+    );
+    expect(markdownToHtml("![sigil](https://example.com/sigil.png)", monster)).toContain(
+      '<img src="https://example.com/sigil.png" alt="sigil">',
+    );
+  });
+
+  it("leaves asterisks, ampersands, and entities alone when they are not markup", () => {
+    expect(markdownToHtml("2 * 3 = 6", monster)).toBe("<p>2 * 3 = 6</p>\n");
+    expect(markdownToHtml("foo*bar*", monster)).toBe("<p>foo*bar*</p>\n");
+    expect(markdownToHtml("Fish & chips &amp; salsa", monster)).toBe("<p>Fish &amp; chips &amp; salsa</p>\n");
+  });
+
+  it("passes authored HTML spans through for DOMPurify", () => {
+    expect(
+      markdownToHtml('<span data-preview-section="authored">Nested marker</span>', monster),
+    ).toContain('<span data-preview-section="authored">Nested marker</span>');
+  });
+
+  it("leaves intentionally unsupported syntax as literal text", () => {
+    expect(markdownToHtml("# Title", monster)).toBe("<p># Title</p>\n");
+    expect(markdownToHtml("_italic_", monster)).toBe("<p>_italic_</p>\n");
+    expect(markdownToHtml("---", monster)).toBe("<p>---</p>\n");
+    expect(markdownToHtml("> quoted", monster)).toBe("<p>&gt; quoted</p>\n");
+  });
+});

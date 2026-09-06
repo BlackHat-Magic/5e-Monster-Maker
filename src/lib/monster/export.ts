@@ -1,4 +1,3 @@
-import { filenameForMonster } from "./toml";
 import {
   statBlockThemeByKey,
   statBlockThemeStyle,
@@ -257,6 +256,15 @@ function normalizeSvgMarkup(markup: string): string {
   }
 
   return result;
+}
+
+export function filenameForMonster(monster: Monster): string {
+  const name = typeof monster.name === "string" ? monster.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "") : "";
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug ? `${slug}.toml` : "monster.toml";
 }
 
 export function exportFilename(monster: Monster, format: ExportFormatKey): string {

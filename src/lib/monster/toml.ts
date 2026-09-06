@@ -448,11 +448,6 @@ export function exportMonsterToml(monster: Monster): string {
   return stringify(exportProjection(monster));
 }
 
-export function filenameForMonster(monster: Monster): string {
-  const name = typeof monster.name === "string" ? monster.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "") : "";
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return slug ? `${slug}.toml` : "monster.toml";
-}
+// Re-exported so existing import sites keep working; the implementation
+// lives in ./export so the TOML parser chunk stays fully lazy.
+export { filenameForMonster } from "./export";

@@ -20,9 +20,9 @@
 	import { STAT_BLOCK_THEME_KEYS, statBlockThemeByKey, type StatBlockThemeKey } from '$lib/theme/stat-block-themes';
 	import ToastHost from './ToastHost.svelte';
 	import { isImportTooLarge, needsDraftConfirmation } from './file-actions';
-	import { exportMonsterToml, filenameForMonster, importMonsterToml, type TomlWarning } from '$lib/monster/toml';
+	import type { TomlWarning } from '$lib/monster/toml';
 	import { EXPORT_FORMATS, exportContentBlob, exportFilename, hasCanvasEncoder, type ExportFormatKey, type RasterExportFormat } from '$lib/monster/export';
-	import { renderVisualExport } from '$lib/monster/export-renderer';
+	import { loadExportRendererModule, loadTomlModule } from '$lib/state/deferred-resources';
 
 	let fileInput: HTMLInputElement;
 	let dialogOpen = $state(false);
@@ -31,6 +31,7 @@
 	let exportTheme = $state<StatBlockThemeKey>($previewTheme);
 	let supportedRasterFormats = $state<Record<RasterExportFormat, boolean>>({ png: true, webp: false, avif: false });
 	let exporting = $state(false);
+	let importing = $state(false);
 	let pendingAction = $state<'new' | null>(null);
 	let importWarnings = $state<TomlWarning[]>([]);
 	let draft = $derived($monster);
@@ -69,10 +70,12 @@
 			setNotice({ kind: 'error', message: 'That TOML file is too large. Imports are limited to 5 MiB.' });
 			return;
 		}
+		importing = true;
 		try {
-			const text = await file.text();
+			// Read the file while the deferred TOML chunk loads so neither waits on the other.
+			const [text, toml] = await Promise.all([file.text(), loadTomlModule()]);
 			if (destroyed || request !== importSequence) return;
-			const result = importMonsterToml(text);
+			const result = toml.importMonsterToml(text);
 			if (!result.ok) {
 				setNotice({ kind: 'error', message: result.message });
 				return;
@@ -87,7 +90,10 @@
 			if (destroyed || request !== importSequence) return;
 			setNotice({ kind: 'error', message: 'Unable to read that file. The current draft is unchanged.' });
 		} finally {
-			if (!destroyed && request === importSequence && sourceInput) sourceInput.value = '';
+			if (!destroyed && request === importSequence) {
+				importing = false;
+				if (sourceInput) sourceInput.value = '';
+			}
 		}
 	}
 
@@ -208,6 +214,8 @@
 			let mime: string;
 			let filename: string;
 			if (format === 'toml') {
+				const { exportMonsterToml, filenameForMonster } = await loadTomlModule();
+				if (destroyed || request !== exportSequence) return;
 				content = exportMonsterToml(value);
 				mime = 'application/toml';
 				filename = filenameForMonster(value);
@@ -216,6 +224,8 @@
 				if (!preview) throw new Error('The stat block preview is not available. Open the preview before exporting.');
 				const width = preview.getBoundingClientRect().width;
 				if (!Number.isFinite(width) || width <= 0) throw new Error('The stat block preview has no measurable width.');
+				const { renderVisualExport } = await loadExportRendererModule();
+				if (destroyed || request !== exportSequence) return;
 				const rendered = await renderVisualExport({ monster: value, theme, format, previewWidth: width, signal: controller.signal });
 				if (destroyed || request !== exportSequence) return;
 				content = rendered.content;
@@ -305,7 +315,7 @@
 			<HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
 			<span>New</span>
 		</Button.Root>
-		<Button.Root class="shell-button" type="button" aria-label="Import" onclick={openFilePicker}>
+		<Button.Root class="shell-button" type="button" aria-label="Import" disabled={importing} onclick={openFilePicker}>
 			<HugeiconsIcon icon={FileImportIcon} size={15} strokeWidth={2} />
 			<span>Import</span>
 		</Button.Root>

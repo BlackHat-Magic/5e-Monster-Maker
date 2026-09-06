@@ -6,17 +6,22 @@
 	import SectionNav from '$lib/components/editor/SectionNav.svelte';
 	import IdentityEditor from '$lib/components/editor/IdentityEditor.svelte';
 	import BasicsEditor from '$lib/components/editor/BasicsEditor.svelte';
-	import StatsEditor from '$lib/components/editor/StatsEditor.svelte';
-	import ProficienciesEditor from '$lib/components/editor/ProficienciesEditor.svelte';
-	import LanguagesEditor from '$lib/components/editor/LanguagesEditor.svelte';
-	import ActionSectionEditor from '$lib/components/editor/ActionSectionEditor.svelte';
+	import LazyEditor from '$lib/components/editor/LazyEditor.svelte';
  	import { editorPanelId, editorTabId, EDITOR_SECTIONS } from '$lib/components/editor/editor-core';
+	import {
+		loadActionSectionEditor,
+		loadLanguagesEditor,
+		loadProficienciesEditor,
+		loadStatsEditor,
+		prefetchDeferredResources,
+	} from '$lib/state/deferred-resources';
 	import { initTheme } from '$lib/state/theme-store';
 	import { restoreMonster, selectedSection } from '$lib/state/monster-store';
 
 	onMount(() => {
 		restoreMonster();
 		initTheme();
+		prefetchDeferredResources();
 	});
 </script>
 
@@ -43,25 +48,25 @@
 						{#if section.key === 'basics'}
 							<BasicsEditor />
 						{:else if section.key === 'stats'}
-							<StatsEditor />
+							<LazyEditor label="Statistics" active={!inactive} loader={loadStatsEditor} />
 						{:else if section.key === 'proficiencies'}
-							<ProficienciesEditor />
+							<LazyEditor label="Proficiencies" active={!inactive} loader={loadProficienciesEditor} />
 						{:else if section.key === 'language'}
-							<LanguagesEditor />
+							<LazyEditor label="Languages" active={!inactive} loader={loadLanguagesEditor} />
 						{:else if section.key === 'traits'}
-							<ActionSectionEditor target="ability" sectionTitle="Traits" />
+							<LazyEditor label="Traits" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'ability', sectionTitle: 'Traits' }} />
 						{:else if section.key === 'action'}
-							<ActionSectionEditor target="action" sectionTitle="Actions" />
+							<LazyEditor label="Actions" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'action', sectionTitle: 'Actions' }} />
 						{:else if section.key === 'bonus_action'}
-							<ActionSectionEditor target="bonus_action" sectionTitle="Bonus Actions" />
+							<LazyEditor label="Bonus Actions" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'bonus_action', sectionTitle: 'Bonus Actions' }} />
 						{:else if section.key === 'reaction'}
-							<ActionSectionEditor target="reaction" sectionTitle="Reactions" />
+							<LazyEditor label="Reactions" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'reaction', sectionTitle: 'Reactions' }} />
 						{:else if section.key === 'legendary_action'}
-							<ActionSectionEditor target="legendary_action" sectionTitle="Legendary" specialFlagKey="is_legendary" introDescriptionKey="legendary_description" introDescriptionLabel="Legendary introduction" />
+							<LazyEditor label="Legendary" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'legendary_action', sectionTitle: 'Legendary', specialFlagKey: 'is_legendary', introDescriptionKey: 'legendary_description', introDescriptionLabel: 'Legendary introduction' }} />
 						{:else if section.key === 'villain_action'}
-							<ActionSectionEditor target="villain_action" sectionTitle="Villain" specialFlagKey="is_villain" introDescriptionKey="villain_description" introDescriptionLabel="Villain introduction" />
+							<LazyEditor label="Villain" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'villain_action', sectionTitle: 'Villain', specialFlagKey: 'is_villain', introDescriptionKey: 'villain_description', introDescriptionLabel: 'Villain introduction' }} />
 						{:else if section.key === 'mythic_action'}
-							<ActionSectionEditor target="mythic_action" sectionTitle="Mythic" specialFlagKey="is_mythic" introDescriptionKey="mythic_description" introDescriptionLabel="Mythic introduction" />
+							<LazyEditor label="Mythic" active={!inactive} loader={loadActionSectionEditor} componentProps={{ target: 'mythic_action', sectionTitle: 'Mythic', specialFlagKey: 'is_mythic', introDescriptionKey: 'mythic_description', introDescriptionLabel: 'Mythic introduction' }} />
 						{/if}
 					</div>
 				{/each}

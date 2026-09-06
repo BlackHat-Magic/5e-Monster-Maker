@@ -252,6 +252,15 @@ describe("browser visual exports", () => {
   });
 
   it("keeps the embedded Monster Manual texture in standalone visual exports", async () => {
+    // jsdom's CSS parser drops image-set() from live element styles, so the
+    // parchment layer is injected with a raw style attribute (which jsdom
+    // preserves verbatim); in a real browser the mounted article carries it.
+    const parchment = document.createElement("div");
+    parchment.setAttribute(
+      "style",
+      'background-image: image-set(url("/statblockparch.avif") type("image/avif"), url("/statblockparch.jpg") type("image/jpeg"))',
+    );
+    resourceNodesForFrame = [parchment];
     const fetchResource = vi.fn(async (url: string) => ({
       ok: true,
       blob: async () => new Blob([url], { type: "image/jpeg" }),
@@ -267,9 +276,33 @@ describe("browser visual exports", () => {
 
     expect(fetchResource).toHaveBeenCalledWith("http://localhost/statblockparch.jpg", expect.any(Object));
     expect(fetchResource).toHaveBeenCalledWith("http://localhost/statblockbar.jpg", expect.any(Object));
+    expect(fetchResource).not.toHaveBeenCalledWith("http://localhost/statblockparch.avif", expect.any(Object));
     expect(result.content).toContain("data:image/jpeg;base64");
     expect(result.content).not.toContain("/statblockparch.jpg");
     expect(result.content).not.toContain("/statblockbar.jpg");
+    expect(result.content).not.toContain("image-set");
+  });
+
+  it("rewrites theme AVIF textures to JPEG before embedding standalone visual exports", async () => {
+    const styled = document.createElement("div");
+    styled.setAttribute("style", 'background-image: url("/statblockparch.avif")');
+    resourceNodesForFrame = [styled];
+    const fetchResource = vi.fn(async (url: string) => ({
+      ok: true,
+      blob: async () => new Blob([url], { type: "image/jpeg" }),
+    }));
+    vi.stubGlobal("fetch", fetchResource);
+
+    const result = await renderVisualExport({
+      monster: normalizeMonster({ name: "AVIF Texture Export" }),
+      theme: "monster-manual-textured",
+      format: "svg",
+      previewWidth: 418,
+    });
+
+    expect(fetchResource).toHaveBeenCalledWith("http://localhost/statblockparch.jpg", expect.any(Object));
+    expect(fetchResource).not.toHaveBeenCalledWith("http://localhost/statblockparch.avif", expect.any(Object));
+    expect(result.content).not.toContain(".avif");
   });
 
   it("rejects external CSS imports instead of leaving them network-dependent", async () => {

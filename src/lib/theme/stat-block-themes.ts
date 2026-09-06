@@ -235,6 +235,13 @@ const barSvg =
   '<rect width="400" height="5" fill="#7A200D" opacity="0.22" filter="url(#bar-noise)"/>' +
   '</svg>';
 
+// Parchment texture, AVIF-first with a JPEG fallback in a single
+// declaration. image-set() lets the browser pick a format it can decode;
+// environments without image-set() ignore the declaration and keep the flat
+// card background underneath.
+const parchmentImageSet =
+  'image-set(url("/statblockparch.avif") type("image/avif"), url("/statblockparch.jpg") type("image/jpeg"))';
+
 export function textureDataUri(): string {
   return `data:image/svg+xml,${encodeURIComponent(textureSvg)}`;
 }
@@ -277,6 +284,8 @@ export function statBlockThemeStyle(key: StatBlockThemeKey): string {
       `--stat-block-bar: ${texture ? `url("/statblockbar.jpg"), url("${barDataUri()}")` : "linear-gradient(#E69A28, #E69A28)"}`,
     );
   }
-  if (texture) declarations.push(`background-image: url("/statblockparch.jpg"), url("${textureDataUri()}")`);
+  if (texture) {
+    declarations.push(`background-image: ${parchmentImageSet}, url("${textureDataUri()}")`);
+  }
   return `${declarations.join("; ")};`;
 }

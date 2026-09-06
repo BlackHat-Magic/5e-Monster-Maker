@@ -619,7 +619,11 @@ test.describe('monster authoring', () => {
 			await repeatableHeading.evaluate((element, currentProperty) => getComputedStyle(element).getPropertyValue(currentProperty), property),
 		]));
 		titleStyles.forEach(([primary, repeatable]) => expect(repeatable).toBe(primary));
+		// Lazy tab panels mount on activation, so visit the Language tab before
+		// asserting on its heading styles, then return to Actions.
+		await editorPane.getByRole('tab', { name: 'Languages', exact: true }).click();
 		const nestedHeading = editorPane.getByTestId('editor-panel-language').locator('.repeatable__title:is(h3)');
+		await expect(nestedHeading).toHaveCount(1);
 		const nestedHeadingStyles = await nestedHeading.evaluate((element) => {
 			const styles = getComputedStyle(element);
 			return { fontSize: Number.parseFloat(styles.fontSize), lineHeight: styles.lineHeight };
@@ -630,6 +634,7 @@ test.describe('monster authoring', () => {
 		});
 		expect(nestedHeadingStyles.fontSize).toBeLessThan(primaryHeadingStyles.fontSize);
 		expect(nestedHeadingStyles.lineHeight).not.toBe(primaryHeadingStyles.lineHeight);
+		await editorPane.getByRole('tab', { name: 'Actions', exact: true }).click();
 		await expect(count).toHaveText('0');
 		await expect(count).toHaveAttribute('aria-live', 'polite');
 		await expect(actionSection.getByRole('status')).toContainText('No actions yet. Add the first entry to begin.');
@@ -844,6 +849,11 @@ test.describe('monster authoring', () => {
 		const legendaryFlag = legendaryPanel.locator('#legendary_action-enabled');
 		const villainFlag = villainPanel.locator('#villain_action-enabled');
 		const mythicFlag = mythicPanel.locator('#mythic_action-enabled');
+		// Lazy tab panels mount on activation; visit each tab once up front so
+		// the hidden-panel assertions below observe mounted content.
+		await legendaryTab.click();
+		await villainTab.click();
+		await mythicTab.click();
 		await expect(legendaryFlag).toHaveCount(1);
 		await expect(villainFlag).toHaveCount(1);
 		await expect(mythicFlag).toHaveCount(1);
@@ -914,10 +924,11 @@ test.describe('monster authoring', () => {
 		await immunitySelector.selectOption('fire');
 		await expect(immunities.getByRole('button', { name: 'Remove fire', exact: true })).toBeVisible();
 		await expect(resistances.getByRole('button', { name: 'Remove fire', exact: true })).toHaveCount(0);
-		const previewDefenseLabels = await page.locator('.stat-block__fields .preview-field').evaluateAll((fields) => fields
+		// The live preview rebuilds on a short debounce, so poll instead of
+		// asserting a single non-retrying snapshot.
+		await expect.poll(async () => page.locator('.stat-block__fields .preview-field').evaluateAll((fields) => fields
 			.map((field) => field.querySelector('strong')?.textContent?.trim())
-			.filter((label): label is string => ['Damage Resistances', 'Damage Immunities', 'Condition Immunities'].includes(label ?? '')));
-		expect(previewDefenseLabels).toEqual(['Damage Resistances', 'Damage Immunities', 'Condition Immunities']);
+			.filter((label): label is string => ['Damage Resistances', 'Damage Immunities', 'Condition Immunities'].includes(label ?? '')))).toEqual(['Damage Resistances', 'Damage Immunities', 'Condition Immunities']);
 	});
 
 	test('keeps the footer compact and shell actions focused', async ({ page }) => {

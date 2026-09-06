@@ -309,8 +309,23 @@ async function embedResourceAttributes(article: HTMLElement, signal?: AbortSigna
 
 const cssUrlPattern = /url\(\s*(?:(['"])(.*?)\1|([^\s)]+))\s*\)/gi;
 const cssImportPattern = /@import\s+(?:(['"])(.*?)\1|url\(\s*(?:(['"])(.*?)\3|([^\s)]+))\s*\))/gi;
+// Matches one image-set(...) expression including a single level of nested
+// parens from url("...") and type("...").
+const imageSetPattern = /image-set\((?:[^()]|\([^()]*\))*\)/gi;
+// Theme textures are served AVIF-first via image-set(), but standalone
+// exports must decode everywhere (including canvas rasterization of SVG
+// exports, where AVIF subresources are unreliable). Collapse the known
+// parchment image-set to its JPEG twin before embedding so exports stay
+// byte-identical to the pre-AVIF pipeline.
+function preferExportSafeTextureUrls(css: string): string {
+	const collapsed = css.replace(imageSetPattern, (match) =>
+		match.includes("/statblockparch.avif") ? 'url("/statblockparch.jpg")' : match,
+	);
+	return collapsed.replace(/\/statblockparch\.avif/gi, "/statblockparch.jpg");
+}
 
 async function embedCssUrls(css: string, signal?: AbortSignal): Promise<string> {
+	css = preferExportSafeTextureUrls(css);
 	for (const match of css.matchAll(cssImportPattern)) {
 		const source = (match[2] ?? match[4] ?? match[5])?.trim();
 		if (source && !isPreservedResourceUrl(source)) {

@@ -149,7 +149,7 @@ describe("FileActions import warning notice", () => {
 			expect(select.value).toBe("monster-manual-smooth");
 		});
 
-		it("downloads TOML without requiring a preview", () => {
+		it("downloads TOML without requiring a preview", async () => {
 			mounted = mount(FileActions, { target: document.body });
 			clickExport();
 			document.querySelector<HTMLButtonElement>('[data-export-format="toml"]')?.click();
@@ -161,8 +161,9 @@ describe("FileActions import warning notice", () => {
 			});
 
 			clickConfirm();
+			// The TOML serializer loads in a deferred chunk, so completion is async.
+			await vi.waitFor(() => expect(createObjectURL).toHaveBeenCalledOnce());
 
-			expect(createObjectURL).toHaveBeenCalledOnce();
 			expect(downloadedBlob?.type).toBe("application/toml");
 			expect(document.querySelector('[role="dialog"]')).toBeNull();
 			expect(window.localStorage.getItem("monster-maker.export-format")).toBe("toml");
@@ -285,7 +286,7 @@ describe("FileActions import warning notice", () => {
 			expect(get(notice)).toBeNull();
 		});
 
-		it("closes after download when format persistence fails", () => {
+		it("closes after download when format persistence fails", async () => {
 			mounted = mount(FileActions, { target: document.body });
 			clickExport();
 			document.querySelector<HTMLButtonElement>('[data-export-format="toml"]')?.click();
@@ -295,8 +296,8 @@ describe("FileActions import warning notice", () => {
 			});
 
 			clickConfirm();
+			await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
 
-			expect(document.querySelector('[role="dialog"]')).toBeNull();
 			expect(get(notice)?.kind).toBe("error");
 			expect(get(notice)?.message).toContain("Exported");
 		});
@@ -323,7 +324,7 @@ describe("FileActions import warning notice", () => {
 
 			clickConfirm();
 			expect(revokeObjectURL).not.toHaveBeenCalled();
-			expect(createObjectURL).toHaveBeenCalledOnce();
+			await vi.waitFor(() => expect(createObjectURL).toHaveBeenCalledOnce());
 			await new Promise((resolve) => window.setTimeout(resolve, 0));
 			expect(revokeObjectURL).toHaveBeenCalledWith("blob:toml");
 		});
