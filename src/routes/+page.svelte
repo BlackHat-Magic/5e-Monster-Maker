@@ -28,7 +28,7 @@
 <div class="app-shell">
 	<AppHeader />
 	<IdentityEditor />
-	<main class="workspace" aria-label="Monster editor">
+	<main class="workspace min-h-0 min-w-0 bg-background px-[clamp(18px,7vw,110px)] py-[clamp(36px,5vw,84px)] max-[560px]:px-[18px]" aria-label="Monster editor">
 		<EditorWorkspace>
 			{#snippet navigation()}<SectionNav />{/snippet}
 			{#snippet children()}

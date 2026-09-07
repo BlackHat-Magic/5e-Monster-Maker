@@ -95,7 +95,7 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-	class="theme-picker"
+	class="theme-picker relative"
 	role="group"
 	aria-label="Theme picker"
 	bind:this={picker}
@@ -106,7 +106,7 @@
 	onkeydown={handleKeydown}
 >
 	<button
-		class="shell-icon-button"
+		class="shell-icon-button inline-flex h-[38px] w-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card text-foreground"
 		type="button"
 		bind:this={trigger}
 		onclick={toggleMode}
@@ -118,20 +118,20 @@
 	</button>
 	{#if open}
 		<div
-			class="theme-popover"
+			class="theme-popover absolute top-full right-0 z-[80] w-[min(320px,calc(100vw-32px))] border border-border bg-card p-4 text-foreground shadow-[12px_12px_0_color-mix(in_srgb,var(--foreground)_10%,transparent)] max-[560px]:right-auto max-[560px]:left-0"
 			transition:fly={{ y: 6, duration: reducedMotion ? 0 : 140 }}
 			inert={!open}
 			aria-hidden={!open}
 		>
-			<div class="theme-popover__heading">
-				<p class="section-label">Appearance</p>
-				<h2>{activeMode === 'light' ? 'Choose a light theme' : 'Choose a dark theme'}</h2>
+			<div class="theme-popover__heading grid gap-1 border-b border-border pb-[14px]">
+				<p class="section-label font-display text-[0.64rem] font-bold tracking-[0.14em] text-muted-foreground uppercase">Appearance</p>
+				<h2 class="m-0 font-display text-base">{activeMode === 'light' ? 'Choose a light theme' : 'Choose a dark theme'}</h2>
 			</div>
-			<div class="theme-tabs" role="tablist" aria-label="Theme mode">
+			<div class="theme-tabs mt-[14px] mb-2 grid grid-cols-2 gap-0.5 border-b border-border" role="tablist" aria-label="Theme mode">
 				{#each MODE_ORDER as value}
 					<button
 						id={modeTabId(value)}
-						class="theme-tab"
+						class="theme-tab inline-flex cursor-pointer items-center justify-center gap-1.5 border-0 border-b-2 border-b-transparent bg-transparent px-1.5 py-[9px] font-display text-[0.7rem] font-bold text-muted-foreground data-[state=active]:border-b-accent data-[state=active]:text-foreground"
 						data-state={activeMode === value ? 'active' : 'inactive'}
 						type="button"
 						role="tab"
@@ -146,14 +146,14 @@
 			{#each MODE_ORDER as value}
 				<div
 					id={modePanelId(value)}
-					class="theme-list"
+					class="theme-list grid max-h-[264px] gap-0.5 overflow-y-auto"
 					tabindex={0}
 					role="tabpanel"
 					aria-labelledby={modeTabId(value)}
 					hidden={activeMode !== value}
 				>
 					{#each (value === 'light' ? lightPalettes : darkPalettes) as palette}
-						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
+						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option grid cursor-pointer grid-cols-[1fr_auto] items-center gap-[9px] border border-transparent bg-transparent px-2 py-[9px] text-left text-[0.78rem] text-foreground hover:border-border hover:bg-muted" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
 							<span>{palette.label}</span>
 							{#if isCurrent(palette.key)}<HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} strokeWidth={2} aria-hidden="true" />{/if}
 						</button>

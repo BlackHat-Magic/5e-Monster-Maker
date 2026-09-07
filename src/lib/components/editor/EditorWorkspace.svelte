@@ -70,14 +70,14 @@
 	});
 </script>
 
-<section class="editor-workspace" aria-label="Monster editor">
-	<div class="editor-workspace__grid">
-		<div id="workspace-panel-preview" class="editor-workspace__preview" role="region" aria-label="Live stat block preview">
+<section class="editor-workspace mx-auto w-[min(100%,720px)] min-w-0 overflow-x-clip" aria-label="Monster editor">
+	<div class="editor-workspace__grid grid min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-[clamp(32px,5vw,72px)] max-[820px]:block">
+		<div id="workspace-panel-preview" class="editor-workspace__preview min-w-0 [overflow-wrap:anywhere] max-[820px]:mb-9" role="region" aria-label="Live stat block preview">
 			<StatBlockPreview createModel={previewModelFactory} />
 			<PreviewThemePicker />
 		</div>
-		<div id="workspace-panel-editor" class="editor-workspace__editor-pane" role="region" aria-label="Editor">
-			<aside class="editor-workspace__nav">{@render navigation()}</aside>
+		<div id="workspace-panel-editor" class="editor-workspace__editor-pane block min-w-0" role="region" aria-label="Editor">
+			<aside class="editor-workspace__nav min-w-0 max-[820px]:static">{@render navigation()}</aside>
 			<div id={EDITOR_PANEL_ID} class="editor-workspace__form" tabindex="-1">
 			{@render children()}
 			</div>

@@ -128,7 +128,7 @@
 
  <nav
   bind:this={navElement}
-  class="section-nav"
+  class="section-nav fixed bottom-0 left-0 top-[var(--app-header-height,88px)] z-[55] grid max-w-[calc(100vw-16px)] content-start gap-[14px] overflow-x-hidden overflow-y-auto border-r border-border bg-[color-mix(in_srgb,var(--card)_94%,var(--bg))] px-2 pb-[22px] pt-4 shadow-[8px_0_20px_color-mix(in_srgb,var(--foreground)_5%,transparent)] max-[820px]:px-[7px]"
   class:section-nav--mobile-mode={mobileMode}
   class:section-nav--open={railOpen}
   class:section-nav--pointer-open={pointerOpen}
@@ -139,7 +139,7 @@
   {#if mobileMode}
    <button
     bind:this={toggleElement}
-    class="section-nav__toggle"
+    class="section-nav__toggle grid h-[38px] w-10 cursor-pointer place-items-center border border-border bg-transparent text-muted-foreground hover:border-accent hover:text-foreground max-[820px]:w-9"
     type="button"
     aria-expanded={railOpen}
     aria-label={railOpen ? 'Collapse sections' : 'Expand sections'}
@@ -150,8 +150,8 @@
    </button>
   {/if}
 
- <div id="section-navigation-list" class="section-nav__groups" role="tablist" aria-orientation="vertical">
-  <ul>
+ <div id="section-navigation-list" class="section-nav__groups min-w-0" role="tablist" aria-orientation="vertical">
+  <ul class="m-0 grid list-none gap-[3px] p-0 min-w-0">
    {#each EDITOR_SECTIONS as section}
     {@const count = countFor(section.key)}
     <li>
@@ -161,7 +161,7 @@
       aria-label={section.label}
       title={section.label}
       class:section-nav__item--active={active === section.key}
-      class="section-nav__item"
+      class="section-nav__item flex min-h-10 w-full cursor-pointer items-center justify-start gap-[11px] border border-transparent border-l-[3px] border-l-transparent bg-transparent py-2 pl-[9px] pr-2 text-left text-muted-foreground hover:border-border hover:text-foreground"
       type="button"
       role="tab"
       aria-selected={active === section.key}
@@ -171,7 +171,7 @@
      >
       <HugeiconsIcon icon={section.icon} size={18} strokeWidth={1.8} aria-hidden="true" />
       <span class="section-nav__label">{section.label}</span>
-      {#if count !== undefined}<span class="section-nav__count" aria-hidden="true">{count.toString().padStart(2, '0')}</span>{/if}
+      {#if count !== undefined}<span class="section-nav__count ml-auto font-display text-[0.64rem] font-extrabold text-accent" aria-hidden="true">{count.toString().padStart(2, '0')}</span>{/if}
      </button>
     </li>
    {/each}
@@ -180,20 +180,12 @@
 </nav>
 
 <style>
- .section-nav { position: fixed; z-index: 55; top: var(--app-header-height, 88px); bottom: 0; left: 0; display: grid; align-content: start; width: var(--section-rail-collapsed-width); max-width: calc(100vw - 16px); gap: 14px; overflow-x: hidden; overflow-y: auto; border-right: 1px solid var(--border); background: color-mix(in srgb, var(--card) 94%, var(--bg)); padding: 16px 8px 22px; box-shadow: 8px 0 20px color-mix(in srgb, var(--foreground) 5%, transparent); transition: width 180ms ease; }
+ .section-nav { width: var(--section-rail-collapsed-width); transition: width 180ms ease; }
  .section-nav--pointer-open { width: min(var(--section-rail-expanded-width), calc(100vw - 16px)); }
- .section-nav__toggle { display: grid; width: 40px; height: 38px; place-items: center; border: 1px solid var(--border); background: transparent; color: var(--muted-foreground); cursor: pointer; }
- .section-nav__toggle:hover { border-color: var(--accent); color: var(--foreground); }
- .section-nav__groups, .section-nav ul { min-width: 0; }
- .section-nav ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
- .section-nav__item { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: flex-start; gap: 11px; border: 1px solid transparent; border-left: 3px solid transparent; padding: 8px 8px 8px 9px; background: transparent; color: var(--muted-foreground); cursor: pointer; text-align: left; }
- .section-nav__item:hover { border-color: var(--border); color: var(--foreground); }
  .section-nav__item--active { border-color: var(--border); border-left-color: var(--accent); background: var(--card); color: var(--foreground); font-weight: 750; box-shadow: 5px 5px 0 color-mix(in srgb, var(--foreground) 5%, transparent); }
  .section-nav__item :global(svg) { flex: 0 0 auto; }
  .section-nav__label { min-width: 0; max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; transition: max-width 160ms ease, opacity 120ms ease; }
  .section-nav--pointer-open .section-nav__label, .section-nav--mobile-mode.section-nav--open .section-nav__label { max-width: 170px; opacity: 1; }
- .section-nav__count { margin-left: auto; color: var(--accent); font-family: var(--font-display); font-size: 0.64rem; font-weight: 800; }
  @media (prefers-reduced-motion: reduce) { .section-nav, .section-nav__label { transition: none; } }
- @media (max-width: 820px) { .section-nav__toggle { width: 36px; } .section-nav { width: var(--section-rail-collapsed-width); padding-inline: 7px; } }
  .section-nav--mobile-mode.section-nav--open { width: 100vw; max-width: 100vw; height: calc(100dvh - var(--app-header-height, 88px)); bottom: auto; padding-inline: 16px; }
 </style>

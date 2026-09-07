@@ -157,54 +157,54 @@
 
 </script>
 
-	<section class="editor-section" aria-labelledby="proficiencies-heading">
-	<div class="editor-section__intro">
-		<h2 id="proficiencies-heading">Proficiencies</h2>
-		<p>Choose known saves and skills, then record defenses, senses, and challenge.</p>
+	<section class="editor-section grid min-w-0 gap-[34px]" aria-labelledby="proficiencies-heading">
+	<div class="editor-section__intro grid gap-2.5">
+		<h2 id="proficiencies-heading" class="m-0 font-display text-[clamp(1.9rem,3.8vw,3.25rem)] leading-[0.96] tracking-[-0.08em]">Proficiencies</h2>
+		<p class="m-0 max-w-[600px] text-[0.9rem] leading-[1.65] text-muted-foreground">Choose known saves and skills, then record defenses, senses, and challenge.</p>
 	</div>
 
-	<div class="editor-check-groups">
-		<fieldset class="editor-check-group">
+	<div class="editor-check-groups grid gap-4">
+		<fieldset class="editor-check-group m-0 min-w-0 border border-border p-[14px]">
 			<legend>Saving throws <FieldHelp label="Saving throws" help="Choose the ability saving throws in which this creature is proficient." /></legend>
-			<div class="editor-check-grid editor-check-grid--six">
-				{#each abilityKeys as key}<label class="editor-check"><input type="checkbox" checked={($monster.proficiencies?.saves ?? []).includes(key)} onchange={(event) => toggleKnown('saves', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{key.toUpperCase()}</span></label>{/each}
+			<div class="editor-check-grid editor-check-grid--six grid gap-x-3 gap-y-2 grid-cols-6 max-[720px]:grid-cols-[repeat(3,1fr)]">
+				{#each abilityKeys as key}<label class="editor-check inline-flex cursor-pointer items-center gap-2 font-display text-[0.76rem] font-bold text-foreground"><input type="checkbox" checked={($monster.proficiencies?.saves ?? []).includes(key)} onchange={(event) => toggleKnown('saves', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{key.toUpperCase()}</span></label>{/each}
 			</div>
 		</fieldset>
-		<fieldset class="editor-check-group">
+		<fieldset class="editor-check-group m-0 min-w-0 border border-border p-[14px]">
 			<legend>Skills <FieldHelp label="Skills" help="Choose the skills in which this creature is proficient." /></legend>
-			<div class="editor-check-grid editor-check-grid--three">
-				{#each skillKeys as key}<label class="editor-check"><input type="checkbox" checked={($monster.proficiencies?.skills ?? []).includes(key)} onchange={(event) => toggleKnown('skills', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{pretty(key)}</span></label>{/each}
+			<div class="editor-check-grid editor-check-grid--three grid gap-x-3 gap-y-2 grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-[repeat(2,minmax(0,1fr)))]">
+				{#each skillKeys as key}<label class="editor-check inline-flex cursor-pointer items-center gap-2 font-display text-[0.76rem] font-bold text-foreground"><input type="checkbox" checked={($monster.proficiencies?.skills ?? []).includes(key)} onchange={(event) => toggleKnown('skills', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{pretty(key)}</span></label>{/each}
 			</div>
 		</fieldset>
-		<fieldset class="editor-check-group">
+		<fieldset class="editor-check-group m-0 min-w-0 border border-border p-[14px]">
 			<legend>Expertise <FieldHelp label="Expertise" help="Choose skills that receive expertise-level proficiency." /></legend>
-			<div class="editor-check-grid editor-check-grid--three">
-				{#each skillKeys as key}<label class="editor-check"><input type="checkbox" checked={($monster.proficiencies?.expertise ?? []).includes(key)} onchange={(event) => toggleKnown('expertise', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{pretty(key)}</span></label>{/each}
+			<div class="editor-check-grid editor-check-grid--three grid gap-x-3 gap-y-2 grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-[repeat(2,minmax(0,1fr)))]">
+				{#each skillKeys as key}<label class="editor-check inline-flex cursor-pointer items-center gap-2 font-display text-[0.76rem] font-bold text-foreground"><input type="checkbox" checked={($monster.proficiencies?.expertise ?? []).includes(key)} onchange={(event) => toggleKnown('expertise', key, (event.currentTarget as HTMLInputElement).checked)} /><span>{pretty(key)}</span></label>{/each}
 			</div>
 		</fieldset>
 	</div>
 
-	<div class="editor-grid">
+	<div class="editor-grid grid min-w-0 gap-[22px]">
 		<Field id="challenge" label="Challenge" help="The challenge rating used in the generated stat block.">
 			{#snippet children(control)}
-				<select class="editor-control" id="challenge" value={String($monster.proficiencies?.challenge ?? 0)} onchange={updateChallenge} aria-describedby={control.describedBy} aria-invalid={control.invalid}>
+				<select class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id="challenge" value={String($monster.proficiencies?.challenge ?? 0)} onchange={updateChallenge} aria-describedby={control.describedBy} aria-invalid={control.invalid}>
 					{#each challengeValues as value}<option value={value}>{value}</option>{/each}
 				</select>
 			{/snippet}
 		</Field>
 	</div>
 
-	<div class="editor-grid editor-grid--three">
+	<div class="editor-grid editor-grid--three grid min-w-0 gap-[22px] grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-1">
 		{#each senses as sense, index}
 				<Field id={`sense-${sense}`} label={pretty(sense)} help={`The ${pretty(sense).toLowerCase()} range in feet.`} error={senseError(sense)}>
 				{#snippet children(control)}
-					<input class="editor-control" id={`sense-${sense}`} type="text" inputmode="numeric" value={senseDraft(sense, index)} onfocus={() => focusSense(sense)} oninput={(event) => updateSense(sense, index, event)} onblur={() => validateSenseBlur(sense)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />
+					<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id={`sense-${sense}`} type="text" inputmode="numeric" value={senseDraft(sense, index)} onfocus={() => focusSense(sense)} oninput={(event) => updateSense(sense, index, event)} onblur={() => validateSenseBlur(sense)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />
 				{/snippet}
 			</Field>
 		{/each}
 	</div>
 
-	<div class="editor-grid editor-grid--three">
+	<div class="editor-grid editor-grid--three grid min-w-0 gap-[22px] grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-1">
 		<CanonicalSelector label="Damage vulnerabilities" kind="damage" values={$monster.proficiencies?.damage_vulnerabilities ?? []} help="Damage types or sources that deal extra damage to the creature." onChange={updateVulnerabilities} />
 		<CanonicalSelector label="Damage resistances" kind="damage" values={$monster.proficiencies?.damage_resistances ?? []} help="Damage types or sources the creature resists." onChange={updateResistances} />
 		<CanonicalSelector label="Damage immunities" kind="damage" values={$monster.proficiencies?.damage_immunities ?? []} help="Damage types or sources the creature ignores." onChange={updateImmunities} />

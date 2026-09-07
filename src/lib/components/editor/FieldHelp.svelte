@@ -23,7 +23,7 @@
 </script>
 
 <script lang="ts">
-	import { onMount, type Snippet } from 'svelte';
+	import { onMount, tick, type Snippet } from 'svelte';
 
 	type HelpLink = {
 		href: string;
@@ -44,8 +44,10 @@
 	let suppressNextFocusOpen = false;
 	let suppressFocusTimer: ReturnType<typeof setTimeout> | undefined;
 	let triggerElement: HTMLButtonElement | null = null;
+	let cardElement: HTMLDivElement | null = null;
 	let helpId = $derived(id ?? createHelpId(label));
 	let flipBelow = $state(false);
+	let alignRight = $state(false);
 	let closeTimer: ReturnType<typeof setTimeout> | undefined;
 	const CLOSE_DELAY = 140;
 	const registration: HelpRegistration = { close: closeFromRegistry };
@@ -100,21 +102,37 @@
 		}, CLOSE_DELAY);
 	}
 
-	function measureFlip(): void {
-		// Prefer the card above the trigger (as before); flip below when there
-		// is not enough room above. In non-visual environments the rects are
-		// empty, which keeps the default above placement.
+	function updateFlip(): void {
+		// Prefer the card above the trigger (as before); flip below only when
+		// the card would not fit above, and right-align when it would
+		// otherwise overflow the viewport (the old floating-ui shift).
+		// In non-visual environments the rects are empty, which keeps the
+		// default above, left-aligned placement.
 		if (!triggerElement || typeof triggerElement.getBoundingClientRect !== 'function') return;
 		const rect = triggerElement.getBoundingClientRect();
-		if (rect.top + rect.height <= 0) return;
-		flipBelow = rect.top < 360;
+		if (rect.top + rect.height <= 0) {
+			flipBelow = false;
+			alignRight = false;
+			return;
+		}
+		const height = cardElement?.getBoundingClientRect().height ?? 0;
+		flipBelow = height > 0 && rect.top < height + 24;
+		if (typeof window !== 'undefined' && Number.isFinite(window.innerWidth)) {
+			const cardWidth = Math.min(320, window.innerWidth - 32);
+			alignRight = cardWidth > 0 && rect.left + cardWidth > window.innerWidth - 8;
+		}
 	}
 
 	function openCard(): void {
 		clearCloseTimer();
-		measureFlip();
+		flipBelow = false;
+		alignRight = false;
 		open = true;
 		activateHelp(registration);
+		// The fade-in covers a same-tick reposition when a flip is needed.
+		void tick().then(() => {
+			if (open) updateFlip();
+		});
 	}
 
 	function handleTriggerLeave(): void {
@@ -186,9 +204,9 @@
 	});
 </script>
 
-<span class="field-help__anchor">
+<span class="field-help__anchor relative inline-grid">
 			<button
-				class="field-help__trigger"
+				class="field-help__trigger inline-grid h-[26px] w-[26px] cursor-pointer place-items-center rounded-[50%]! border-0 bg-transparent p-0 text-accent hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
 				bind:this={triggerElement}
 				data-field-help-trigger={helpId}
 				type="button"
@@ -201,7 +219,7 @@
 			onfocus={handleFocus}
 			onclickcapture={handleClick}
 		>
-			<span class="field-help__badge">i</span>
+			<span class="field-help__badge inline-grid h-[17px] w-[17px] place-items-center rounded-[50%]! border border-border font-display text-[0.66rem] font-extrabold not-italic leading-none text-foreground">i</span>
 		</button>
 	<!-- Bespoke hover card: always mounted (like the previous forceMounted
 	portal) so assistive tech and tests see a stable node; the closed wrapper
@@ -212,12 +230,14 @@
 		style="position: absolute;"
 		data-help-state={open ? 'open' : 'closed'}
 		data-flip={flipBelow ? 'below' : 'above'}
+		data-align={alignRight ? 'right' : 'left'}
 		onpointerenter={handleCardEnter}
 		onpointerleave={handleCardLeave}
 	>
 		<div
+			bind:this={cardElement}
 			id={helpId}
-			class="field-help__content"
+			class="field-help__content z-[70] w-[min(320px,calc(100vw-32px))] border border-border bg-card px-4 py-[15px] text-[0.78rem] leading-[1.5] text-foreground opacity-0 translate-y-1 shadow-[9px_9px_0_color-mix(in_srgb,var(--foreground)_10%,transparent)] transition-[opacity_140ms_ease,transform_140ms_ease,visibility_0s_linear_140ms] data-[state=open]:visible data-[state=open]:opacity-100 data-[state=open]:translate-y-0 data-[state=open]:delay-0 data-[state=closed]:invisible data-[state=closed]:pointer-events-none"
 			data-state={open ? 'open' : 'closed'}
 			data-field-help-content={helpId}
 		>
@@ -233,17 +253,11 @@
 </span>
 
 <style>
-	.field-help__anchor { position: relative; display: inline-grid; }
 	.field-help__portal { position: absolute; z-index: 70; bottom: calc(100% + 8px); left: 0; }
 	.field-help__portal[data-flip="below"] { top: calc(100% + 8px); bottom: auto; }
-	.field-help__portal[data-help-state="closed"] { visibility: hidden; pointer-events: none; }
+	.field-help__portal[data-align="right"] { left: auto; right: 0; }
 	.field-help__portal[data-help-state="open"] { pointer-events: auto; }
-	.field-help__trigger { display: inline-grid; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50% !important; padding: 0; background: transparent; color: var(--accent); cursor: pointer; }
-	.field-help__trigger:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-	.field-help__badge { display: inline-grid; width: 17px; height: 17px; place-items: center; border: 1px solid var(--border); border-radius: 50% !important; color: var(--foreground); font-family: var(--font-display); font-size: 0.66rem; font-style: normal; font-weight: 800; line-height: 1; }
-	.field-help__content { z-index: 70; width: min(320px, calc(100vw - 32px)); border: 1px solid var(--border); background: var(--card); padding: 15px 16px; color: var(--foreground); box-shadow: 9px 9px 0 color-mix(in srgb, var(--foreground) 10%, transparent); font-size: 0.78rem; line-height: 1.5; opacity: 0; transform: translateY(4px); transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms; }
-	.field-help__content[data-state="open"] { visibility: visible; opacity: 1; transform: translateY(0); transition-delay: 0s; }
-	.field-help__content[data-state="closed"] { visibility: hidden; pointer-events: none; }
+	.field-help__portal[data-help-state="closed"] { visibility: hidden; pointer-events: none; top: 0; right: auto !important; left: -10000px !important; }
 	.field-help__content :global(p) { margin: 0; color: var(--muted-foreground); }
 	.field-help__content :global(a) { display: inline-block; margin-top: 9px; color: var(--accent); font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; }
 	@media (prefers-reduced-motion: reduce) { .field-help__content { transition: none; } }

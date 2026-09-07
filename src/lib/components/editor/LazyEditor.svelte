@@ -34,9 +34,5 @@
 	{@const EditorComponent = Resolved}
 	<EditorComponent {...componentProps} />
 {:else}
-	<p class="editor-loading" role="status">Loading {label}…</p>
+	<p class="m-0 text-[0.82rem] text-muted-foreground" role="status">Loading {label}…</p>
 {/if}
-
-<style>
-	.editor-loading { margin: 0; color: var(--muted-foreground); font-size: 0.82rem; }
-</style>

@@ -116,20 +116,20 @@
 		onfocusout={handleFocusOut}
 	>
 		{#if $notice}
-			<section class:error={$notice.kind === 'error'} class="toast" data-testid="toast-notice" role={$notice.kind === 'error' ? 'alert' : 'status'}>
-				<p>{$notice.message}</p>
-				<button class="toast__close" type="button" aria-label="Dismiss notification" title="Dismiss notification" onclick={dismissNotice}>x</button>
+			<section class:error={$notice.kind === 'error'} class="toast flex items-start justify-between gap-4 border border-border border-l-4 border-l-accent bg-[color-mix(in_srgb,var(--card)_96%,var(--bg))] p-3 text-foreground shadow-[8px_8px_0_color-mix(in_srgb,var(--foreground)_8%,transparent)]" data-testid="toast-notice" role={$notice.kind === 'error' ? 'alert' : 'status'}>
+				<p class="m-0 leading-[1.45]">{$notice.message}</p>
+				<button class="toast__close shrink-0 cursor-pointer border-0 bg-transparent px-0.5 text-[1.15rem] leading-none text-muted-foreground hover:text-foreground" type="button" aria-label="Dismiss notification" title="Dismiss notification" onclick={dismissNotice}>x</button>
 			</section>
 		{/if}
 		{#if warnings.length > 0}
-			<section class="toast toast--warnings" role="alert" aria-labelledby="import-warnings-heading" data-testid="import-warnings">
-				<div class="toast__heading">
-					<strong id="import-warnings-heading">Import warnings</strong>
-					<button class="toast__dismiss" type="button" onclick={onDismissWarnings}>Dismiss warnings</button>
+			<section class="toast toast--warnings grid gap-2 border border-border border-l-4 border-l-accent bg-[color-mix(in_srgb,var(--card)_96%,var(--bg))] p-3 text-foreground shadow-[8px_8px_0_color-mix(in_srgb,var(--foreground)_8%,transparent)]" role="alert" aria-labelledby="import-warnings-heading" data-testid="import-warnings">
+				<div class="toast__heading flex items-center justify-between gap-3">
+					<strong id="import-warnings-heading" class="font-display text-[0.74rem] tracking-[0.05em] uppercase">Import warnings</strong>
+					<button class="toast__dismiss cursor-pointer border border-border bg-transparent px-2 py-[5px] font-display text-[0.66rem] font-bold text-foreground hover:border-accent hover:bg-muted" type="button" onclick={onDismissWarnings}>Dismiss warnings</button>
 				</div>
-				<ul>
+				<ul class="m-0 grid gap-1 pl-[18px] text-[0.74rem] leading-[1.4] text-muted-foreground">
 					{#each warnings as warning}
-						<li aria-label={formatTomlWarning(warning)}><code aria-hidden="true">{warning.path}</code><span aria-hidden="true">: {warning.message}</span></li>
+						<li aria-label={formatTomlWarning(warning)}><code class="font-display text-[0.7rem] text-foreground" aria-hidden="true">{warning.path}</code><span aria-hidden="true">: {warning.message}</span></li>
 					{/each}
 				</ul>
 			</section>

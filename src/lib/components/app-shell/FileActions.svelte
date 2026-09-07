@@ -376,19 +376,19 @@
 <label class="sr-only" for="monster-file-input">Import TOML file</label>
 <input id="monster-file-input" name="monster-file" bind:this={fileInput} class="sr-only" type="file" accept=".toml,text/plain" onchange={onFileChange} />
 
-<div class="file-actions" role="group" aria-label="File actions">
-	<div class="file-actions__buttons">
-		<button class="shell-button shell-button--accent" type="button" aria-label="New" onclick={requestDraftAction}>
+<div class="file-actions flex items-center gap-2.5 max-[920px]:grow max-[920px]:basis-full max-[920px]:justify-between" role="group" aria-label="File actions">
+	<div class="file-actions__buttons flex items-center gap-1 max-[560px]:flex-1">
+		<button class="shell-button shell-button--accent max-[560px]:flex-1 max-[560px]:px-[7px] inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" aria-label="New" onclick={requestDraftAction}>
 			<HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
-			<span>New</span>
+			<span class="max-[560px]:hidden">New</span>
 		</button>
-		<button class="shell-button" type="button" aria-label="Import" disabled={importing} onclick={openFilePicker}>
+		<button class="shell-button max-[560px]:flex-1 max-[560px]:px-[7px] inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" aria-label="Import" disabled={importing} onclick={openFilePicker}>
 			<HugeiconsIcon icon={FileImportIcon} size={15} strokeWidth={2} />
-			<span>Import</span>
+			<span class="max-[560px]:hidden">Import</span>
 		</button>
-		<button class="shell-button" type="button" aria-label="Export" onclick={openExportDialog}>
+		<button class="shell-button max-[560px]:flex-1 max-[560px]:px-[7px] inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" aria-label="Export" onclick={openExportDialog}>
 			<HugeiconsIcon icon={Download04Icon} size={15} strokeWidth={2} />
-			<span>Export</span>
+			<span class="max-[560px]:hidden">Export</span>
 		</button>
 	</div>
 </div>
@@ -397,9 +397,9 @@
 {#if dialogOpen}
 	<!-- Bespoke modal replacing the dialog primitive: same classes, roles and
 	close semantics (Escape / overlay click blocked only while exporting). -->
-	<div class="shell-dialog-overlay" aria-hidden="true" onpointerdown={handleOverlayPointerDown}></div>
+	<div class="shell-dialog-overlay fixed inset-0 z-[100] bg-[color-mix(in_srgb,var(--foreground)_48%,transparent)]" aria-hidden="true" onpointerdown={handleOverlayPointerDown}></div>
 	<div
-		class={`shell-dialog${dialogMode === 'export' ? ' export-dialog' : ''}`}
+		class={`shell-dialog fixed left-1/2 top-1/2 z-[101] w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 border border-border bg-card p-6 shadow-[14px_14px_0_color-mix(in_srgb,var(--foreground)_12%,transparent)]${dialogMode === 'export' ? ' w-[min(560px,calc(100vw-32px))]' : ''}`}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby={dialogMode === 'export' ? 'export-title' : 'new-draft-title'}
@@ -409,20 +409,20 @@
 		onkeydown={handleDialogKeydown}
 	>
 			{#if dialogMode === 'export'}
-				<h2 id="export-title">Export stat block</h2>
-				<p id="export-description">
+				<h2 id="export-title" class="m-0 font-display text-[1.25rem]">Export stat block</h2>
+				<p id="export-description" class="text-[0.86rem] leading-[1.5] text-muted-foreground">
 					Choose a file format and the stat-block theme for this export.
 					{#if exportError}
-						<span id="export-error" class="export-dialog__error" role="alert">Unable to export stat block: {exportError}</span>
+						<span id="export-error" class="mt-3 block border border-accent border-l-4 bg-[color-mix(in_srgb,var(--accent)_9%,var(--card))] px-3 py-2.5 text-[0.78rem] leading-[1.45] text-foreground" role="alert">Unable to export stat block: {exportError}</span>
 					{/if}
 				</p>
-				<div class="export-dialog__fields">
-					<div class="export-dialog__field">
-						<span id="export-format-label">Format</span>
-						<div class="export-dialog__formats" role="radiogroup" aria-labelledby="export-format-label">
+				<div class="mt-5 grid gap-4">
+					<div class="grid gap-1.5">
+						<span id="export-format-label" class="font-display text-[0.72rem] font-extrabold">Format</span>
+						<div class="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2 max-[500px]:grid-cols-[repeat(2,minmax(0,1fr))]" role="radiogroup" aria-labelledby="export-format-label">
 							{#each EXPORT_FORMATS as format}
 								<button
-									class="export-dialog__format"
+									class="export-dialog__format min-h-10 cursor-pointer border border-border bg-card font-display text-[0.72rem] font-extrabold text-foreground hover:border-accent hover:bg-muted disabled:cursor-not-allowed disabled:opacity-[0.38]"
 									class:export-dialog__format--active={selectedExportFormat === format.key}
 									type="button"
 									role="radio"
@@ -442,31 +442,31 @@
 						{#each EXPORT_FORMATS as format}
 							{@const help = exportFormatHelp(format.key)}
 							{#if help}
-								<span id={`export-format-help-${format.key}`} class="export-dialog__help" data-export-format-help={format.key}>{help}</span>
+								<span id={`export-format-help-${format.key}`} class="col-span-full m-0 cursor-help border-0 bg-transparent p-0 text-left text-[0.72rem] leading-[1.4] text-muted-foreground" data-export-format-help={format.key}>{help}</span>
 							{/if}
 						{/each}
 					</div>
-					<div class="export-dialog__field">
-						<label for="export-theme">Export theme</label>
-						<select id="export-theme" aria-label="Export theme" bind:value={exportTheme} disabled={exporting}>
+					<div class="grid gap-1.5">
+						<label for="export-theme" class="font-display text-[0.72rem] font-extrabold">Export theme</label>
+						<select id="export-theme" class="min-h-10 border border-border bg-card px-2.5 text-foreground" aria-label="Export theme" bind:value={exportTheme} disabled={exporting}>
 							{#each STAT_BLOCK_THEME_KEYS as key}
 								<option value={key}>{statBlockThemeByKey[key].label}</option>
 							{/each}
 						</select>
 					</div>
 				</div>
-				<div class="export-dialog__actions">
-					<button class="shell-button" type="button" data-export-cancel disabled={exporting} onclick={cancelExport}>Cancel</button>
-					<button class="shell-button shell-button--accent" type="button" data-export-confirm disabled={exporting || !isSelectedFormatAvailable()} onclick={confirmExport}>
+				<div class="mt-6 flex justify-end gap-2 max-[500px]:flex-col-reverse">
+					<button class="shell-button max-[560px]:flex-1 max-[560px]:px-[7px] max-[500px]:w-full inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" data-export-cancel disabled={exporting} onclick={cancelExport}>Cancel</button>
+					<button class="shell-button shell-button--accent max-[560px]:flex-1 max-[560px]:px-[7px] max-[500px]:w-full inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" data-export-confirm disabled={exporting || !isSelectedFormatAvailable()} onclick={confirmExport}>
 						{exporting ? 'Exporting...' : 'Export'}
 					</button>
 				</div>
 			{:else}
-				<h2 id="new-draft-title">Start a new draft?</h2>
-				<p id="new-draft-description">This replaces the current monster with a fresh default draft. This cannot be undone.</p>
-				<div class="shell-dialog__actions">
-					<button class="shell-button" type="button" onclick={cancelDraftAction}>Cancel</button>
-					<button class="shell-button shell-button--danger" type="button" onclick={confirmDraftAction}>
+				<h2 id="new-draft-title" class="m-0 font-display text-[1.25rem]">Start a new draft?</h2>
+				<p id="new-draft-description" class="text-[0.86rem] leading-[1.5] text-muted-foreground">This replaces the current monster with a fresh default draft. This cannot be undone.</p>
+				<div class="mt-6 flex justify-end gap-2">
+					<button class="shell-button max-[560px]:flex-1 max-[560px]:px-[7px] inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" onclick={cancelDraftAction}>Cancel</button>
+					<button class="shell-button shell-button--danger max-[560px]:flex-1 max-[560px]:px-[7px] inline-flex min-h-[38px] cursor-pointer items-center justify-center gap-2 border border-border bg-card px-[13px] font-display text-[0.76rem] font-bold tracking-[0.02em] text-foreground" type="button" onclick={confirmDraftAction}>
 						<HugeiconsIcon icon={Delete01Icon} size={15} strokeWidth={2} />
 						Start new draft
 					</button>

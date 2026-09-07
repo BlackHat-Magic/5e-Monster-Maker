@@ -70,16 +70,16 @@
   }
 </script>
 
-<section class="canonical-selector" aria-labelledby={`${controlId}-label`}>
-  <div class="canonical-selector__heading">
-    <div class="canonical-selector__label">
-      <label id={`${controlId}-label`} for={controlId}>{label}</label>
+<section class="canonical-selector grid min-w-0 gap-3" aria-labelledby={`${controlId}-label`}>
+  <div class="canonical-selector__heading flex items-center justify-between gap-3">
+    <div class="canonical-selector__label inline-flex items-center gap-[7px]">
+      <label class="font-display text-[0.7rem] font-[750] tracking-[0.04em] text-foreground uppercase" id={`${controlId}-label`} for={controlId}>{label}</label>
       {#if help}<FieldHelp label={label} help={help} />{/if}
     </div>
-    <span class="canonical-selector__count">{orderedValues.length.toString().padStart(2, '0')}</span>
+    <span class="canonical-selector__count font-display text-[0.7rem] tracking-[0.08em] text-accent">{orderedValues.length.toString().padStart(2, '0')}</span>
   </div>
 
-  <select class="editor-control canonical-selector__select" id={controlId} value={selectedValue} onchange={selectValue} aria-label={`Add ${label.toLowerCase()}`}>
+  <select class="editor-control canonical-selector__select h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id={controlId} value={selectedValue} onchange={selectValue} aria-label={`Add ${label.toLowerCase()}`}>
     <option value="">Add a value...</option>
     {#each canonicalValues as value}
       <option value={value}>{defenseLabel(kind, value)}</option>
@@ -88,40 +88,23 @@
   </select>
 
   {#if customMode}
-    <div class="canonical-selector__custom">
-      <input bind:this={customInputElement} class="editor-control" type="text" value={customValue} placeholder="Describe a custom defense" aria-label={`Custom ${label.toLowerCase()}`} aria-describedby={customError ? `${controlId}-custom-error` : undefined} aria-invalid={customError ? 'true' : undefined} oninput={(event) => (customValue = (event.currentTarget as HTMLInputElement).value)} onkeydown={handleCustomKeydown} />
-      <button class="editor-button editor-button--accent" type="button" onclick={addCustomValue}>Add</button>
+    <div class="canonical-selector__custom grid grid-cols-[minmax(0,1fr)_auto] gap-2 max-[500px]:grid-cols-1">
+      <input bind:this={customInputElement} class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" type="text" value={customValue} placeholder="Describe a custom defense" aria-label={`Custom ${label.toLowerCase()}`} aria-describedby={customError ? `${controlId}-custom-error` : undefined} aria-invalid={customError ? 'true' : undefined} oninput={(event) => (customValue = (event.currentTarget as HTMLInputElement).value)} onkeydown={handleCustomKeydown} />
+      <button class="editor-button editor-button--accent inline-flex h-11 min-h-11 cursor-pointer items-center justify-center gap-[7px] border border-border bg-card px-3 font-display text-[0.68rem] font-[750] text-foreground hover:border-accent hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-[0.34]" type="button" onclick={addCustomValue}>Add</button>
     </div>
-    {#if customError}<p class="canonical-selector__error" id={`${controlId}-custom-error`} role="alert">{customError}</p>{/if}
+    {#if customError}<p class="canonical-selector__error m-0 text-[0.74rem] text-[#c2414d]" id={`${controlId}-custom-error`} role="alert">{customError}</p>{/if}
   {/if}
 
   {#if orderedValues.length > 0}
-    <div class="canonical-selector__chips" aria-label={`${label} selected values`}>
+    <div class="canonical-selector__chips flex min-w-0 max-w-full flex-wrap gap-1.5" aria-label={`${label} selected values`}>
       {#each orderedValues as value (value.toLowerCase())}
-        <span class="canonical-selector__chip">
+        <span class="canonical-selector__chip inline-flex max-w-full items-center gap-1.5 rounded-[9999px]! border border-border bg-muted py-[3px] pl-2 pr-[5px] font-display text-[0.7rem] font-bold leading-[1.25] text-foreground [overflow-wrap:anywhere]">
           <span>{defenseLabel(kind, value)}</span>
-          <button type="button" aria-label={`Remove ${value}`} onclick={() => removeValue(value)}>×</button>
+          <button class="grid h-[22px] w-[22px] flex-none cursor-pointer place-items-center rounded-[50%]! border border-border bg-card text-[0.78rem] leading-none text-muted-foreground hover:border-[#c2414d] hover:text-[#c2414d]" type="button" aria-label={`Remove ${value}`} onclick={() => removeValue(value)}>×</button>
         </span>
       {/each}
     </div>
   {:else}
-    <p class="canonical-selector__empty">No {label.toLowerCase()} selected.</p>
+    <p class="canonical-selector__empty m-0 text-[0.74rem] text-muted-foreground">No {label.toLowerCase()} selected.</p>
   {/if}
 </section>
-
-<style>
-  .canonical-selector { display: grid; gap: 12px; min-width: 0; }
-  .canonical-selector__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .canonical-selector__label { display: inline-flex; align-items: center; gap: 7px; }
-  .canonical-selector__label label { color: var(--foreground); font-family: var(--font-display); font-size: 0.7rem; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; }
-  .canonical-selector__count { color: var(--accent); font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 0.08em; }
-  .canonical-selector__select { height: var(--editor-control-height); }
-  .canonical-selector__custom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-  .canonical-selector__chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; }
-  .canonical-selector__chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--border); border-radius: 9999px !important; background: var(--muted); padding: 3px 5px 3px 8px; color: var(--foreground); font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
-  .canonical-selector__chip button { display: inline-grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border: 1px solid var(--border); border-radius: 50% !important; background: var(--card); color: var(--muted-foreground); cursor: pointer; font-size: 0.78rem; line-height: 1; }
-  .canonical-selector__chip button:hover { border-color: var(--danger); color: var(--danger); }
-  .canonical-selector__empty, .canonical-selector__error { margin: 0; color: var(--muted-foreground); font-size: 0.74rem; }
-  .canonical-selector__error { color: var(--danger); }
-  @media (max-width: 500px) { .canonical-selector__custom { grid-template-columns: 1fr; } }
-</style>

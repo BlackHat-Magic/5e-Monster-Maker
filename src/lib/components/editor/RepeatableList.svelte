@@ -426,27 +426,27 @@
 
 	<svelte:document onpointermove={pointerMove} onpointerup={finishPointerDrag} onpointercancel={handlePointerCancel} onlostpointercapture={handleLostPointerCapture} />
 
-	<section bind:this={sectionElement} class="repeatable" aria-label={label}>
-	<div class="repeatable__heading">
+	<section bind:this={sectionElement} class="repeatable grid gap-[14px]" aria-label={label}>
+	<div class="repeatable__heading flex items-center justify-between gap-5 border-b border-border pb-[13px] max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-[13px]">
 		<div>
-			<svelte:element this={headingTag} id={headingId} class="repeatable__title" aria-label={label}>
-				{label}<span class="repeatable__count" aria-live="polite" aria-label={`${items.length} entries`}>{items.length}</span>
+			<svelte:element this={headingTag} id={headingId} class="repeatable__title m-0 flex min-w-0 items-baseline gap-2.5 font-display text-base tracking-[-0.02em]" aria-label={label}>
+				{label}<span class="repeatable__count text-[0.72rem] font-extrabold tracking-[0.08em] text-accent" aria-live="polite" aria-label={`${items.length} entries`}>{items.length}</span>
 			</svelte:element>
 		</div>
-		<button class="editor-button editor-button--accent" type="button" onclick={addItem} aria-label={addLabel} data-repeatable-add>
+		<button class="editor-button editor-button--accent inline-flex h-11 min-h-11 cursor-pointer items-center justify-center gap-[7px] border border-border bg-card px-3 font-display text-[0.68rem] font-[750] text-foreground hover:border-accent hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-[0.34] max-[560px]:self-start" type="button" onclick={addItem} aria-label={addLabel} data-repeatable-add>
 			<span aria-hidden="true">+</span>{addLabel}
 		</button>
 	</div>
 
 	{#if items.length === 0}
-		<div class="repeatable__empty" role="status">No {label.toLowerCase()} yet. Add the first entry to begin.</div>
+		<div class="repeatable__empty border border-dashed border-border p-[18px] text-[0.8rem] text-muted-foreground" role="status">No {label.toLowerCase()} yet. Add the first entry to begin.</div>
 	{:else}
-		<div class="repeatable__items">
+		<div class="repeatable__items relative grid min-w-0 gap-2.5">
 			{#each displayItems as item, index (itemKey(item, index))}
 				{@const name = itemName(item, index)}
 				{@const key = itemKey(item, index)}
 				<article
-					class="repeatable__item"
+					class="repeatable__item relative min-w-0 border border-border bg-[color-mix(in_srgb,var(--card)_78%,var(--bg))]"
 					class:repeatable__item--dragging={pointerDragKey === key}
 					tabindex="-1"
 					data-repeatable-row={index}
@@ -454,13 +454,13 @@
 					animate:flip={{ duration: reducedMotion ? 0 : 180 }}
 				>
 					{#if pointerDragKey !== null && dropTargetIndex === index}
-						<div class="repeatable__insertion" data-repeatable-insertion aria-hidden="true"></div>
+						<div class="repeatable__insertion pointer-events-none absolute top-[-6px] right-2 left-2 z-[1] h-[3px] rounded-[99px] bg-accent shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_24%,transparent)]" data-repeatable-insertion aria-hidden="true"></div>
 					{/if}
-					<div class="repeatable__item-bar">
-						<strong>{name}</strong>
-						<div class="repeatable__controls">
+					<div class="repeatable__item-bar flex min-h-[38px] items-center gap-[9px] border-b border-border bg-[color-mix(in_srgb,var(--muted)_55%,transparent)] px-2">
+						<strong class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-display text-[0.72rem]">{name}</strong>
+						<div class="repeatable__controls flex gap-0.5">
 							<button
-								class="editor-icon-button repeatable__drag-handle"
+								class="editor-icon-button repeatable__drag-handle inline-flex h-[26px] w-[26px] min-w-[42px] cursor-grab touch-none items-center justify-center gap-[7px] border border-border bg-card p-0 font-display text-[0.58rem] font-[750] tracking-[0.05em] text-foreground uppercase active:cursor-grabbing active:bg-accent active:text-(--accent-foreground)"
 								class:repeatable__drag-handle--dragging={pointerDragKey === key || keyboardDragIndex === index}
 								type="button"
 								data-repeatable-drag-handle
@@ -475,7 +475,7 @@
 								<span aria-hidden="true">drag</span>
 							</button>
 							<button
-								class="editor-icon-button repeatable__collapse"
+								class="editor-icon-button repeatable__collapse inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center gap-[7px] border border-border bg-card p-0 font-display text-base leading-none text-foreground"
 								type="button"
 								onclick={() => toggleCollapsed(key)}
 								aria-label={`${collapsedKeys.has(key) ? 'Expand' : 'Collapse'} ${name}`}
@@ -485,39 +485,26 @@
 							>
 								<span aria-hidden="true">{collapsedKeys.has(key) ? '+' : '-'}</span>
 							</button>
-							<button class="editor-icon-button editor-icon-button--danger" type="button" onclick={() => removeItem(index)} aria-label={`Remove ${name}`} title="Remove">×</button>
+							<button class="editor-icon-button editor-icon-button--danger inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center gap-[7px] border border-border bg-card p-0 font-display text-[0.68rem] font-[750] text-foreground" type="button" onclick={() => removeItem(index)} aria-label={`Remove ${name}`} title="Remove">×</button>
 						</div>
 					</div>
-					<div class="repeatable__body" hidden={collapsedKeys.has(key)}>
+					<div class="repeatable__body grid gap-[13px] p-[14px]" hidden={collapsedKeys.has(key)}>
 						{@render children(item, index, (next: T) => updateItem(index, next))}
 					</div>
 				</article>
 			{/each}
 		</div>
 	{/if}
-	<div class="repeatable__live-status" aria-live="polite" aria-atomic="true" data-repeatable-live-status>{dragStatus}</div>
+	<div class="repeatable__live-status absolute h-px w-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)]" aria-live="polite" aria-atomic="true" data-repeatable-live-status>{dragStatus}</div>
 </section>
 
 <style>
-	.repeatable { display: grid; gap: 14px; }
-	.repeatable__heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--border); padding-bottom: 13px; }
-	.repeatable__title { display: flex; align-items: baseline; gap: 10px; margin: 0; font-family: var(--font-display); font-size: 1rem; letter-spacing: -0.02em; }
 	.repeatable__title:is(h2) { color: var(--foreground); font-size: clamp(1.9rem, 3.8vw, 3.25rem); line-height: 0.96; letter-spacing: -0.08em; }
 	.repeatable__title:is(h3) { color: var(--foreground); font-size: 1rem; line-height: normal; letter-spacing: -0.02em; }
-	.repeatable__count { color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; }
-	.repeatable__empty { border: 1px dashed var(--border); padding: 18px; color: var(--muted-foreground); font-size: 0.8rem; }
-	.repeatable__items { position: relative; display: grid; gap: 10px; min-width: 0; }
-	.repeatable__item { position: relative; min-width: 0; border: 1px solid var(--border); background: color-mix(in srgb, var(--card) 78%, var(--bg)); }
 	.repeatable__item--dragging { opacity: 0.72; }
-	.repeatable__insertion { position: absolute; z-index: 1; top: -6px; right: 8px; left: 8px; height: 3px; border-radius: 99px; background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); pointer-events: none; }
-	.repeatable__item-bar { display: flex; align-items: center; gap: 9px; min-height: 38px; border-bottom: 1px solid var(--border); padding: 0 8px; background: color-mix(in srgb, var(--muted) 55%, transparent); }
-	.repeatable__item-bar strong { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 0.72rem; }
-	.repeatable__controls { display: flex; gap: 2px; }
-	.repeatable__drag-handle { touch-action: none; cursor: grab; min-width: 42px; font-size: 0.58rem; letter-spacing: 0.05em; text-transform: uppercase; }
-	.repeatable__drag-handle:active { cursor: grabbing; background: var(--accent); color: var(--accent-foreground); }
+	.repeatable__item-bar strong { font-family: var(--font-display); }
+	.repeatable__body[hidden] { display: none; }
 	.repeatable__drag-handle--dragging { cursor: grabbing; background: var(--foreground); color: var(--card); }
-	.repeatable__collapse { font-size: 1rem; line-height: 1; }
-	.repeatable__body { display: grid; gap: 13px; padding: 14px; }
-	.repeatable__live-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-	@media (max-width: 560px) { .repeatable__heading { align-items: stretch; flex-direction: column; gap: 13px; } .repeatable__heading .editor-button { align-self: flex-start; } }
+	@media (prefers-reduced-motion: reduce) { .repeatable__title { transition: none; } }
 </style>
+

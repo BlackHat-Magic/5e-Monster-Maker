@@ -71,15 +71,15 @@
 </script>
 
 	{#if !isMounted}
-	<section class="preview-loading" aria-label="Preparing stat block preview">
-		<h2>Preparing stat block</h2>
-		<p>The live preview will appear as soon as the editor is ready.</p>
+	<section class="preview-loading border border-border border-l-[5px] border-l-accent bg-[color-mix(in_srgb,var(--card)_92%,var(--muted))] px-[clamp(20px,3vw,30px)] py-[clamp(20px,3vw,30px)] shadow-[10px_10px_0_color-mix(in_srgb,var(--foreground)_6%,transparent)]" aria-label="Preparing stat block preview">
+		<h2 class="mt-[9px] font-display text-[clamp(1.45rem,3vw,2.25rem)] leading-[0.98] tracking-[-0.07em] text-foreground">Preparing stat block</h2>
+		<p class="mt-[15px] text-[0.82rem] leading-[1.55] text-muted-foreground">The live preview will appear as soon as the editor is ready.</p>
 	</section>
 	{:else if previewError}
-	<section class="preview-error" role="alert" aria-labelledby={errorHeadingId}>
-		<h2 id={errorHeadingId}>Preview could not be rendered</h2>
-		<p>{previewError}</p>
-		<p>The editor is still available. Continue editing and try the preview again.</p>
+	<section class="preview-error border border-accent border-l-[5px] bg-[color-mix(in_srgb,var(--accent)_9%,var(--card))] px-[clamp(20px,3vw,30px)] py-[clamp(20px,3vw,30px)] shadow-[10px_10px_0_color-mix(in_srgb,var(--foreground)_6%,transparent)]" role="alert" aria-labelledby={errorHeadingId}>
+		<h2 id={errorHeadingId} class="mt-[9px] font-display text-[clamp(1.45rem,3vw,2.25rem)] leading-[0.98] tracking-[-0.07em] text-foreground">Preview could not be rendered</h2>
+		<p class="mt-[15px] text-[0.82rem] leading-[1.55] text-muted-foreground">{previewError}</p>
+		<p class="mt-[15px] border-t border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] pt-3 text-[0.82rem] leading-[1.55] text-muted-foreground">The editor is still available. Continue editing and try the preview again.</p>
 	</section>
 	{:else if preview}
 	<StatBlock preview={preview} theme={$previewTheme} {idPrefix} twoColumn={debouncedMonster.two_column ?? false} />

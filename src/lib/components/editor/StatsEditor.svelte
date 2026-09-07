@@ -135,45 +135,45 @@
 	}
 </script>
 
-	<section class="editor-section" aria-labelledby="stats-heading">
-	<div class="editor-section__intro">
-		<h2 id="stats-heading">Core stats</h2>
-		<p>Set defensive math, movement, and the six ability scores.</p>
+	<section class="editor-section grid min-w-0 gap-[34px]" aria-labelledby="stats-heading">
+	<div class="editor-section__intro grid gap-2.5">
+		<h2 id="stats-heading" class="m-0 font-display text-[clamp(1.9rem,3.8vw,3.25rem)] leading-[0.96] tracking-[-0.08em]">Core stats</h2>
+		<p class="m-0 max-w-[600px] text-[0.9rem] leading-[1.65] text-muted-foreground">Set defensive math, movement, and the six ability scores.</p>
 	</div>
-	<div class="editor-grid editor-grid--three">
+	<div class="editor-grid editor-grid--three grid min-w-0 gap-[22px] grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-1">
 		<Field id="base-ac" label="Base AC" help="The creature's starting Armor Class before optional Dexterity or armor adjustments." error={numericError('base_ac')}>
-			{#snippet children(control)}<input class="editor-control" id="base-ac" type="text" inputmode="numeric" value={numericDraft('base_ac')} onfocus={() => focusNumeric('base_ac')} oninput={(event) => updateNumericDraft('base_ac', event)} onblur={() => validateNumericBlur('base_ac')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+			{#snippet children(control)}<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id="base-ac" type="text" inputmode="numeric" value={numericDraft('base_ac')} onfocus={() => focusNumeric('base_ac')} oninput={(event) => updateNumericDraft('base_ac', event)} onblur={() => validateNumericBlur('base_ac')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 		</Field>
 		{#if $monster.stats?.add_dex}
 			<Field id="max-dex" label="Max Dex" help="The maximum Dexterity modifier applied to AC; use -1 for no cap." error={numericError('max_dex')}>
-				{#snippet children(control)}<input class="editor-control" id="max-dex" type="text" inputmode="numeric" value={numericDraft('max_dex')} onfocus={() => focusNumeric('max_dex')} oninput={(event) => updateNumericDraft('max_dex', event)} onblur={() => validateNumericBlur('max_dex')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+				{#snippet children(control)}<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id="max-dex" type="text" inputmode="numeric" value={numericDraft('max_dex')} onfocus={() => focusNumeric('max_dex')} oninput={(event) => updateNumericDraft('max_dex', event)} onblur={() => validateNumericBlur('max_dex')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 			</Field>
 		{/if}
 		<Field id="hit-dice" label="Hit dice" help="The number of hit dice used to calculate hit points." error={numericError('hit_dice')}>
-			{#snippet children(control)}<input class="editor-control" id="hit-dice" type="text" inputmode="numeric" value={numericDraft('hit_dice')} onfocus={() => focusNumeric('hit_dice')} oninput={(event) => updateNumericDraft('hit_dice', event)} onblur={() => validateNumericBlur('hit_dice')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+			{#snippet children(control)}<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id="hit-dice" type="text" inputmode="numeric" value={numericDraft('hit_dice')} onfocus={() => focusNumeric('hit_dice')} oninput={(event) => updateNumericDraft('hit_dice', event)} onblur={() => validateNumericBlur('hit_dice')} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 		</Field>
 	</div>
-	<div class="editor-grid editor-grid--two">
+	<div class="editor-grid editor-grid--two grid min-w-0 gap-[22px] grid-cols-[repeat(2,minmax(0,1fr))] max-[500px]:grid-cols-1">
 		<Field id="armor" label="Armor" help="Optional armor text shown with the creature's Armor Class.">
-			{#snippet children(control)}<input class="editor-control" id="armor" type="text" value={$monster.stats?.armor ?? ''} oninput={updateArmor} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+			{#snippet children(control)}<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id="armor" type="text" value={$monster.stats?.armor ?? ''} oninput={updateArmor} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 		</Field>
-		<div class="editor-check-card editor-check-card--inline"><label class="editor-check"><input type="checkbox" checked={$monster.stats?.add_dex ?? false} onchange={updateAddDex} /><span>Add Dexterity modifier</span></label></div>
+		<div class="editor-check-card editor-check-card--inline grid content-center gap-1.5 gap-x-[9px] border border-border bg-[color-mix(in_srgb,var(--muted)_38%,transparent)] p-[13px] grid-cols-[auto_1fr]"><label class="editor-check inline-flex cursor-pointer items-center gap-2 font-display text-[0.76rem] font-bold text-foreground"><input type="checkbox" checked={$monster.stats?.add_dex ?? false} onchange={updateAddDex} /><span>Add Dexterity modifier</span></label></div>
 	</div>
 
-	<div class="editor-section__subhead"><span>Movement / ft.</span><i></i></div>
-	<div class="editor-grid editor-grid--five">
+	<div class="editor-section__subhead flex items-center gap-[13px] font-display text-[0.65rem] font-extrabold tracking-[0.12em] text-muted-foreground uppercase"><span>Movement / ft.</span><i></i></div>
+	<div class="editor-grid editor-grid--five grid min-w-0 gap-[22px] grid-cols-[repeat(5,minmax(0,1fr))] max-[720px]:grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-[repeat(2,minmax(0,1fr))]">
 		{#each speedFields as speed}
 			<Field id={`speed-${speed.label.toLowerCase()}`} label={speed.label} help={`The creature's ${speed.label.toLowerCase()} movement in feet.`} error={numericError(speed.field)}>
-				{#snippet children(control)}<input class="editor-control" id={`speed-${speed.label.toLowerCase()}`} type="text" inputmode="numeric" value={numericDraft(speed.field)} onfocus={() => focusNumeric(speed.field)} oninput={(event) => updateNumericDraft(speed.field, event)} onblur={() => validateNumericBlur(speed.field)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+				{#snippet children(control)}<input class="editor-control h-11 max-w-full min-h-11 w-full border border-border bg-card px-3 py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0" id={`speed-${speed.label.toLowerCase()}`} type="text" inputmode="numeric" value={numericDraft(speed.field)} onfocus={() => focusNumeric(speed.field)} oninput={(event) => updateNumericDraft(speed.field, event)} onblur={() => validateNumericBlur(speed.field)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 			</Field>
 		{/each}
 	</div>
 
-	<div class="editor-section__subhead"><span>Ability scores</span><i></i></div>
-	<div class="editor-grid editor-grid--six">
+	<div class="editor-section__subhead flex items-center gap-[13px] font-display text-[0.65rem] font-extrabold tracking-[0.12em] text-muted-foreground uppercase"><span>Ability scores</span><i></i></div>
+	<div class="editor-grid editor-grid--six grid min-w-0 gap-[22px] grid-cols-[repeat(6,minmax(0,1fr))] max-[720px]:grid-cols-[repeat(3,minmax(0,1fr))] max-[500px]:grid-cols-[repeat(2,minmax(0,1fr))]">
 		{#each ABILITY_KEYS as key, index}
 			<Field id={`editor-ability-${key}`} label={key.toUpperCase()} help={`${ABILITY_LABELS[key]} score used for modifiers and derived rules.`} error={numericError(`ability.${key}`)}>
-				{#snippet children(control)}<input class="editor-control editor-control--score" id={`editor-ability-${key}`} type="text" inputmode="numeric" value={numericDraft(`ability.${key}`)} onfocus={() => focusNumeric(`ability.${key}`)} oninput={(event) => updateNumericDraft(`ability.${key}`, event)} onblur={() => validateNumericBlur(`ability.${key}`)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
+				{#snippet children(control)}<input class="editor-control editor-control--score h-11 max-w-full min-h-11 w-full border border-border bg-card py-2.5 text-[0.88rem] leading-[1.4] text-foreground focus:border-accent focus:outline-2 focus:outline-[color-mix(in_srgb,var(--ring)_35%,transparent)] focus:outline-offset-0 px-[7px] text-center" id={`editor-ability-${key}`} type="text" inputmode="numeric" value={numericDraft(`ability.${key}`)} onfocus={() => focusNumeric(`ability.${key}`)} oninput={(event) => updateNumericDraft(`ability.${key}`, event)} onblur={() => validateNumericBlur(`ability.${key}`)} aria-describedby={control.describedBy} aria-invalid={control.invalid} />{/snippet}
 			</Field>
 		{/each}
 	</div>
