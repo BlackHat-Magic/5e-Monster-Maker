@@ -2,7 +2,6 @@
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { CheckmarkCircle04Icon, Moon01Icon, Sun01Icon } from '@hugeicons/core-free-icons';
 	import { fly } from 'svelte/transition';
-	import { Tabs } from '$lib/components/ui/tabs/index.js';
 	import { darkPalettes, lightPalettes, type DarkThemeKey, type LightThemeKey, type ThemeKey, type ThemeMode } from '$lib/theme/palettes';
 	import { darkTheme, lightTheme, mode, setDarkTheme, setLightTheme, toggleMode } from '$lib/state/theme-store';
 
@@ -66,6 +65,32 @@
 	function isCurrent(key: ThemeKey): boolean {
 		return $mode === 'light' ? $lightTheme === key : $darkTheme === key;
 	}
+
+	function modeTabId(value: ThemeMode): string {
+		return `theme-mode-tab-${value}`;
+	}
+
+	function modePanelId(value: ThemeMode): string {
+		return `theme-mode-panel-${value}`;
+	}
+
+	const MODE_ORDER: ThemeMode[] = ['light', 'dark'];
+
+	function handleModeTabKeydown(event: KeyboardEvent): void {
+		// APG tabs pattern mirroring the section navigation: arrows move and
+		// activate, Home/End jump to the ends.
+		if (!['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+		event.preventDefault();
+		const currentIndex = MODE_ORDER.indexOf(activeMode);
+		let nextIndex = currentIndex;
+		if (event.key === 'Home') nextIndex = 0;
+		else if (event.key === 'End') nextIndex = MODE_ORDER.length - 1;
+		else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % MODE_ORDER.length;
+		else nextIndex = (currentIndex - 1 + MODE_ORDER.length) % MODE_ORDER.length;
+		const next = MODE_ORDER[nextIndex];
+		chooseMode(next);
+		document.getElementById(modeTabId(next))?.focus();
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -102,28 +127,39 @@
 				<p class="section-label">Appearance</p>
 				<h2>{activeMode === 'light' ? 'Choose a light theme' : 'Choose a dark theme'}</h2>
 			</div>
-			<Tabs.Root bind:value={activeMode} onValueChange={(value) => chooseMode(value as ThemeMode)}>
-				<Tabs.List class="theme-tabs" aria-label="Theme mode">
-					<Tabs.Trigger class="theme-tab" value="light"><HugeiconsIcon icon={Sun01Icon} size={14} strokeWidth={1.8} /> Light</Tabs.Trigger>
-					<Tabs.Trigger class="theme-tab" value="dark"><HugeiconsIcon icon={Moon01Icon} size={14} strokeWidth={1.8} /> Dark</Tabs.Trigger>
-				</Tabs.List>
-				<Tabs.Content value="light" class="theme-list" tabindex={0}>
-					{#each lightPalettes as palette}
+			<div class="theme-tabs" role="tablist" aria-label="Theme mode">
+				{#each MODE_ORDER as value}
+					<button
+						id={modeTabId(value)}
+						class="theme-tab"
+						data-state={activeMode === value ? 'active' : 'inactive'}
+						type="button"
+						role="tab"
+						aria-selected={activeMode === value}
+						aria-controls={modePanelId(value)}
+						tabindex={activeMode === value ? 0 : -1}
+						onclick={() => chooseMode(value)}
+						onkeydown={handleModeTabKeydown}
+					>{#if value === 'light'}<HugeiconsIcon icon={Sun01Icon} size={14} strokeWidth={1.8} /> Light{:else}<HugeiconsIcon icon={Moon01Icon} size={14} strokeWidth={1.8} /> Dark{/if}</button>
+				{/each}
+			</div>
+			{#each MODE_ORDER as value}
+				<div
+					id={modePanelId(value)}
+					class="theme-list"
+					tabindex={0}
+					role="tabpanel"
+					aria-labelledby={modeTabId(value)}
+					hidden={activeMode !== value}
+				>
+					{#each (value === 'light' ? lightPalettes : darkPalettes) as palette}
 						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
 							<span>{palette.label}</span>
 							{#if isCurrent(palette.key)}<HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} strokeWidth={2} aria-hidden="true" />{/if}
 						</button>
 					{/each}
-				</Tabs.Content>
-				<Tabs.Content value="dark" class="theme-list" tabindex={0}>
-					{#each darkPalettes as palette}
-						<button class:theme-option--current={isCurrent(palette.key)} class="theme-option" type="button" onclick={() => choosePalette(palette.key)} aria-pressed={isCurrent(palette.key)}>
-							<span>{palette.label}</span>
-							{#if isCurrent(palette.key)}<HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} strokeWidth={2} aria-hidden="true" />{/if}
-						</button>
-					{/each}
-				</Tabs.Content>
-			</Tabs.Root>
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>

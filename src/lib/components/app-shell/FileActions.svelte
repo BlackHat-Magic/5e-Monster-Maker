@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import {
 		Add01Icon,
@@ -6,8 +7,6 @@
 		Download04Icon,
 		FileImportIcon
 	} from '@hugeicons/core-free-icons';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Dialog } from '$lib/components/ui/dialog/index.js';
 	import {
 		currentMonster,
 		monster,
@@ -40,6 +39,8 @@
 	let destroyed = false;
 	let exportError = $state<string | null>(null);
 	let exportController: AbortController | undefined;
+	let dialogNode = $state<HTMLDivElement | null>(null);
+	let previouslyFocused: HTMLElement | null = null;
 
 	$effect(() => () => {
 		destroyed = true;
@@ -275,6 +276,72 @@
 		if (dialogMode === 'export' && exporting) event.preventDefault();
 	}
 
+	function dialogFocusables(): HTMLElement[] {
+		if (!dialogNode) return [];
+		const candidates = [...dialogNode.querySelectorAll<HTMLElement>(
+			'button:not([disabled]), select:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+		)];
+		return candidates.filter((element) => element.tabIndex >= 0);
+	}
+
+	function focusDialog(): void {
+		// Bespoke modal: move focus inside on open (mirrors the previous dialog
+		// primitive's autofocus) and trap Tab while open.
+		previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		const first = dialogFocusables()[0];
+		if (first) first.focus({ preventScroll: true });
+		else dialogNode?.focus({ preventScroll: true });
+	}
+
+	function restoreDialogFocus(): void {
+		previouslyFocused?.focus({ preventScroll: true });
+		previouslyFocused = null;
+	}
+
+	function handleDialogKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			if (dialogMode === 'export' && exporting) {
+				event.preventDefault();
+				return;
+			}
+			event.preventDefault();
+			closeDialog();
+			return;
+		}
+		if (event.key !== 'Tab' || !dialogNode) return;
+		const stops = dialogFocusables();
+		if (stops.length === 0) {
+			event.preventDefault();
+			return;
+		}
+		const currentIndex = stops.indexOf(document.activeElement as HTMLElement);
+		if (event.shiftKey && (currentIndex <= 0)) {
+			event.preventDefault();
+			stops[stops.length - 1]?.focus({ preventScroll: true });
+		} else if (!event.shiftKey && (currentIndex === stops.length - 1 || currentIndex < 0)) {
+			event.preventDefault();
+			stops[0]?.focus({ preventScroll: true });
+		}
+	}
+
+	function handleOverlayPointerDown(event: PointerEvent): void {
+		if (event.target !== event.currentTarget) return;
+		closeDialog();
+	}
+
+	$effect(() => {
+		if (!dialogOpen) return;
+		// Wait a tick so the dialog node is mounted before focusing.
+		let cancelled = false;
+		void tick().then(() => {
+			if (!cancelled) focusDialog();
+		});
+		return () => {
+			cancelled = true;
+			restoreDialogFocus();
+		};
+	});
+
 	function applyNewDraft(): void {
 		importSequence += 1;
 		const persisted = resetMonster();
@@ -311,39 +378,44 @@
 
 <div class="file-actions" role="group" aria-label="File actions">
 	<div class="file-actions__buttons">
-		<Button.Root class="shell-button shell-button--accent" type="button" aria-label="New" onclick={requestDraftAction}>
+		<button class="shell-button shell-button--accent" type="button" aria-label="New" onclick={requestDraftAction}>
 			<HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={2} />
 			<span>New</span>
-		</Button.Root>
-		<Button.Root class="shell-button" type="button" aria-label="Import" disabled={importing} onclick={openFilePicker}>
+		</button>
+		<button class="shell-button" type="button" aria-label="Import" disabled={importing} onclick={openFilePicker}>
 			<HugeiconsIcon icon={FileImportIcon} size={15} strokeWidth={2} />
 			<span>Import</span>
-		</Button.Root>
-		<Button.Root class="shell-button" type="button" aria-label="Export" onclick={openExportDialog}>
+		</button>
+		<button class="shell-button" type="button" aria-label="Export" onclick={openExportDialog}>
 			<HugeiconsIcon icon={Download04Icon} size={15} strokeWidth={2} />
 			<span>Export</span>
-		</Button.Root>
+		</button>
 	</div>
 </div>
 <ToastHost warnings={importWarnings} onDismissWarnings={dismissImportWarnings} />
 
 {#if dialogOpen}
-	<Dialog.Root open={true} onOpenChange={closeDialog}>
-	<Dialog.Portal>
-		<Dialog.Overlay class="shell-dialog-overlay" />
-		<Dialog.Content
-			class={`shell-dialog${dialogMode === 'export' ? ' export-dialog' : ''}`}
-			onEscapeKeydown={preventActiveExportClose}
-			onInteractOutside={preventActiveExportClose}
-		>
+	<!-- Bespoke modal replacing the dialog primitive: same classes, roles and
+	close semantics (Escape / overlay click blocked only while exporting). -->
+	<div class="shell-dialog-overlay" aria-hidden="true" onpointerdown={handleOverlayPointerDown}></div>
+	<div
+		class={`shell-dialog${dialogMode === 'export' ? ' export-dialog' : ''}`}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby={dialogMode === 'export' ? 'export-title' : 'new-draft-title'}
+		aria-describedby={dialogMode === 'export' ? 'export-description' : 'new-draft-description'}
+		tabindex={-1}
+		bind:this={dialogNode}
+		onkeydown={handleDialogKeydown}
+	>
 			{#if dialogMode === 'export'}
-				<Dialog.Title>Export stat block</Dialog.Title>
-				<Dialog.Description id="export-description">
+				<h2 id="export-title">Export stat block</h2>
+				<p id="export-description">
 					Choose a file format and the stat-block theme for this export.
 					{#if exportError}
 						<span id="export-error" class="export-dialog__error" role="alert">Unable to export stat block: {exportError}</span>
 					{/if}
-				</Dialog.Description>
+				</p>
 				<div class="export-dialog__fields">
 					<div class="export-dialog__field">
 						<span id="export-format-label">Format</span>
@@ -384,23 +456,21 @@
 					</div>
 				</div>
 				<div class="export-dialog__actions">
-					<Dialog.Close class="shell-button" type="button" data-export-cancel disabled={exporting} onclick={cancelExport}>Cancel</Dialog.Close>
-					<Button.Root class="shell-button shell-button--accent" type="button" data-export-confirm disabled={exporting || !isSelectedFormatAvailable()} onclick={confirmExport}>
+					<button class="shell-button" type="button" data-export-cancel disabled={exporting} onclick={cancelExport}>Cancel</button>
+					<button class="shell-button shell-button--accent" type="button" data-export-confirm disabled={exporting || !isSelectedFormatAvailable()} onclick={confirmExport}>
 						{exporting ? 'Exporting...' : 'Export'}
-					</Button.Root>
+					</button>
 				</div>
 			{:else}
-				<Dialog.Title>Start a new draft?</Dialog.Title>
-				<Dialog.Description>This replaces the current monster with a fresh default draft. This cannot be undone.</Dialog.Description>
+				<h2 id="new-draft-title">Start a new draft?</h2>
+				<p id="new-draft-description">This replaces the current monster with a fresh default draft. This cannot be undone.</p>
 				<div class="shell-dialog__actions">
-					<Dialog.Close class="shell-button" type="button" onclick={cancelDraftAction}>Cancel</Dialog.Close>
-					<Button.Root class="shell-button shell-button--danger" type="button" onclick={confirmDraftAction}>
+					<button class="shell-button" type="button" onclick={cancelDraftAction}>Cancel</button>
+					<button class="shell-button shell-button--danger" type="button" onclick={confirmDraftAction}>
 						<HugeiconsIcon icon={Delete01Icon} size={15} strokeWidth={2} />
 						Start new draft
-					</Button.Root>
+					</button>
 				</div>
 			{/if}
-		</Dialog.Content>
-	</Dialog.Portal>
-</Dialog.Root>
+	</div>
 {/if}

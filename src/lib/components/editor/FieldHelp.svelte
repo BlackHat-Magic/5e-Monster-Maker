@@ -24,7 +24,6 @@
 
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
-	import { Popover } from '$lib/components/ui/popover/index.js';
 
 	type HelpLink = {
 		href: string;
@@ -46,15 +45,14 @@
 	let suppressFocusTimer: ReturnType<typeof setTimeout> | undefined;
 	let triggerElement: HTMLButtonElement | null = null;
 	let helpId = $derived(id ?? createHelpId(label));
+	let flipBelow = $state(false);
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+	const CLOSE_DELAY = 140;
 	const registration: HelpRegistration = { close: closeFromRegistry };
 
 	function closeFromRegistry(): void {
 		open = false;
 		pointerFocus = false;
-	}
-
-	function keepFocus(event: Event): void {
-		event.preventDefault();
 	}
 
 	function handlePointerDown(): void {
@@ -63,7 +61,7 @@
 	}
 
 	function handlePointerEnter(): void {
-		activateHelp(registration);
+		openCard();
 	}
 
 	function handleFocus(): void {
@@ -75,15 +73,62 @@
 		}
 		if (pointerFocus) {
 			pointerFocus = false;
-			activateHelp(registration);
+			openCard();
 			return;
 		}
-		open = true;
-		activateHelp(registration);
+		openCard();
 	}
 
 	function handleClick(): void {
 		activateHelp(registration);
+	}
+
+	function clearCloseTimer(): void {
+		if (closeTimer !== undefined) {
+			clearTimeout(closeTimer);
+			closeTimer = undefined;
+		}
+	}
+
+	function scheduleClose(): void {
+		clearCloseTimer();
+		closeTimer = setTimeout(() => {
+			closeTimer = undefined;
+			if (!open) return;
+			open = false;
+			deactivateHelp(registration);
+		}, CLOSE_DELAY);
+	}
+
+	function measureFlip(): void {
+		// Prefer the card above the trigger (as before); flip below when there
+		// is not enough room above. In non-visual environments the rects are
+		// empty, which keeps the default above placement.
+		if (!triggerElement || typeof triggerElement.getBoundingClientRect !== 'function') return;
+		const rect = triggerElement.getBoundingClientRect();
+		if (rect.top + rect.height <= 0) return;
+		flipBelow = rect.top < 360;
+	}
+
+	function openCard(): void {
+		clearCloseTimer();
+		measureFlip();
+		open = true;
+		activateHelp(registration);
+	}
+
+	function handleTriggerLeave(): void {
+		if (!open) return;
+		scheduleClose();
+	}
+
+	function handleCardEnter(): void {
+		clearCloseTimer();
+	}
+
+	function handleCardLeave(): void {
+		if (!open) return;
+		scheduleClose();
 	}
 
 	function suppressFocusReopen(): void {
@@ -127,6 +172,7 @@
 		document.addEventListener('focusout', closeWhenFocusLeaves, true);
 		return () => {
 			if (suppressFocusTimer) clearTimeout(suppressFocusTimer);
+			clearCloseTimer();
 			deactivateHelp(registration);
 			document.removeEventListener('pointerdown', closeOutside, true);
 			document.removeEventListener('keydown', closeEscape, true);
@@ -140,57 +186,64 @@
 	});
 </script>
 
-<Popover.Root bind:open>
-	<Popover.Trigger openOnHover openDelay={0} closeDelay={140}>
-		{#snippet child({ props })}
+<span class="field-help__anchor">
 			<button
-				{...props}
 				class="field-help__trigger"
 				bind:this={triggerElement}
 				data-field-help-trigger={helpId}
 				type="button"
 				aria-label={`${label} information`}
 				aria-describedby={helpId}
-				onpointerdown={handlePointerDown}
-				onpointerentercapture={handlePointerEnter}
-				onpointerup={() => (pointerFocus = false)}
-				onfocus={handleFocus}
-				onclickcapture={handleClick}
-			>
-				<span class="field-help__badge">i</span>
-			</button>
-		{/snippet}
-	</Popover.Trigger>
-	<Popover.Portal>
- 	<Popover.Content side="top" sideOffset={8} collisionPadding={16} forceMount onOpenAutoFocus={keepFocus} onCloseAutoFocus={keepFocus}>
-			{#snippet child({ wrapperProps, props, open })}
-				<!-- data-help-state mirrors the popover so the closed portal wrapper
-				can never intercept clicks meant for nearby inputs and dropdowns. -->
-				<div {...wrapperProps} data-help-state={open ? 'open' : 'closed'}>
-					<div {...props} id={helpId} class="field-help__content" data-field-help-content={helpId}>
-						<p>{help}</p>
-						{#if open}
-							{#if children}{@render children()}{/if}
-							{#if link}
-								<a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-							{/if}
-						{/if}
-					</div>
-				</div>
-			{/snippet}
-		</Popover.Content>
-	</Popover.Portal>
-</Popover.Root>
+			onpointerdown={handlePointerDown}
+			onpointerentercapture={handlePointerEnter}
+			onpointerleave={handleTriggerLeave}
+			onpointerup={() => (pointerFocus = false)}
+			onfocus={handleFocus}
+			onclickcapture={handleClick}
+		>
+			<span class="field-help__badge">i</span>
+		</button>
+	<!-- Bespoke hover card: always mounted (like the previous forceMounted
+	portal) so assistive tech and tests see a stable node; the closed wrapper
+	can never intercept clicks meant for nearby inputs and dropdowns. -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="field-help__portal"
+		style="position: absolute;"
+		data-help-state={open ? 'open' : 'closed'}
+		data-flip={flipBelow ? 'below' : 'above'}
+		onpointerenter={handleCardEnter}
+		onpointerleave={handleCardLeave}
+	>
+		<div
+			id={helpId}
+			class="field-help__content"
+			data-state={open ? 'open' : 'closed'}
+			data-field-help-content={helpId}
+		>
+			<p>{help}</p>
+			{#if open}
+				{#if children}{@render children()}{/if}
+				{#if link}
+					<a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+				{/if}
+			{/if}
+		</div>
+	</div>
+</span>
 
 <style>
+	.field-help__anchor { position: relative; display: inline-grid; }
+	.field-help__portal { position: absolute; z-index: 70; bottom: calc(100% + 8px); left: 0; }
+	.field-help__portal[data-flip="below"] { top: calc(100% + 8px); bottom: auto; }
+	.field-help__portal[data-help-state="closed"] { visibility: hidden; pointer-events: none; }
+	.field-help__portal[data-help-state="open"] { pointer-events: auto; }
 	.field-help__trigger { display: inline-grid; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50% !important; padding: 0; background: transparent; color: var(--accent); cursor: pointer; }
 	.field-help__trigger:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 	.field-help__badge { display: inline-grid; width: 17px; height: 17px; place-items: center; border: 1px solid var(--border); border-radius: 50% !important; color: var(--foreground); font-family: var(--font-display); font-size: 0.66rem; font-style: normal; font-weight: 800; line-height: 1; }
 	.field-help__content { z-index: 70; width: min(320px, calc(100vw - 32px)); border: 1px solid var(--border); background: var(--card); padding: 15px 16px; color: var(--foreground); box-shadow: 9px 9px 0 color-mix(in srgb, var(--foreground) 10%, transparent); font-size: 0.78rem; line-height: 1.5; opacity: 0; transform: translateY(4px); transition: opacity 140ms ease, transform 140ms ease, visibility 0s linear 140ms; }
 	.field-help__content[data-state="open"] { visibility: visible; opacity: 1; transform: translateY(0); transition-delay: 0s; }
 	.field-help__content[data-state="closed"] { visibility: hidden; pointer-events: none; }
-	div[data-help-state="closed"] { visibility: hidden !important; pointer-events: none !important; }
-	div[data-help-state="open"] { pointer-events: auto; }
 	.field-help__content :global(p) { margin: 0; color: var(--muted-foreground); }
 	.field-help__content :global(a) { display: inline-block; margin-top: 9px; color: var(--accent); font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; }
 	@media (prefers-reduced-motion: reduce) { .field-help__content { transition: none; } }

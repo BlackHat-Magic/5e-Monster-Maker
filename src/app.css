@@ -144,6 +144,7 @@ html.theme-anim *, html.theme-anim ::before, html.theme-anim ::after { transitio
 .theme-tab { display: inline-flex; justify-content: center; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; padding: 9px 6px; background: transparent; color: var(--muted-foreground); cursor: pointer; font-family: var(--font-display); font-size: 0.7rem; font-weight: 700; }
 .theme-tab[data-state="active"] { border-bottom-color: var(--accent); color: var(--foreground); }
 .theme-list { display: grid; max-height: 264px; gap: 2px; overflow-y: auto; }
+.theme-list[hidden] { display: none; }
 .theme-option { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px; border: 1px solid transparent; padding: 9px 8px; background: transparent; color: var(--foreground); cursor: pointer; text-align: left; font-size: 0.78rem; }
 .theme-option:hover, .theme-option--current { border-color: var(--border); background: var(--muted); }
 .theme-option--current { font-weight: 700; }
