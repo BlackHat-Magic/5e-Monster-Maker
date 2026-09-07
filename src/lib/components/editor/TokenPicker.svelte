@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { Add01Icon } from '@hugeicons/core-free-icons';
 	import { insertTokenAtSelection, TOKEN_GROUPS, tokenPickerKeyAction, tokenText, type TokenOption } from './action-editor-core';
@@ -66,6 +66,32 @@
 			if (option) choose(option);
 		}
 	}
+
+	function pickerContains(target: EventTarget | null): boolean {
+		if (!(target instanceof Node)) return false;
+		return Boolean(triggerElement?.contains(target) || dialogElement?.contains(target));
+	}
+
+	onMount(() => {
+		// Bespoke popover: close on outside pointer interaction or when focus
+		// leaves the picker entirely (mirrors FieldHelp's dismissal contract).
+		function closeOutside(event: PointerEvent): void {
+			const target = event.target;
+			if (!open || !(target instanceof Element) || pickerContains(target)) return;
+			open = false;
+			triggerElement?.focus();
+		}
+		function closeWhenFocusLeaves(event: FocusEvent): void {
+			if (!open || pickerContains(event.relatedTarget)) return;
+			open = false;
+		}
+		document.addEventListener('pointerdown', closeOutside, true);
+		document.addEventListener('focusout', closeWhenFocusLeaves, true);
+		return () => {
+			document.removeEventListener('pointerdown', closeOutside, true);
+			document.removeEventListener('focusout', closeWhenFocusLeaves, true);
+		};
+	});
 
 	$effect(() => {
 		if (!open) return;

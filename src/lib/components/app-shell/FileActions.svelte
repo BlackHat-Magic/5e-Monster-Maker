@@ -272,10 +272,6 @@
 		dialogOpen = false;
 	}
 
-	function preventActiveExportClose(event: Event): void {
-		if (dialogMode === 'export' && exporting) event.preventDefault();
-	}
-
 	function dialogFocusables(): HTMLElement[] {
 		if (!dialogNode) return [];
 		const candidates = [...dialogNode.querySelectorAll<HTMLElement>(

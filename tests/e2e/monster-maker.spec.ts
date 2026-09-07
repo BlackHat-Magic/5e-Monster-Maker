@@ -1267,6 +1267,14 @@ test.describe('monster authoring', () => {
 		await editorPane.getByRole('tab', { name: 'Bonus Actions', exact: true }).click();
 		await editorPane.getByRole('tabpanel', { name: 'Bonus Actions', exact: true }).getByRole('button', { name: 'Insert a monster token', exact: true }).click();
 
+		const actionsPicker = editorPane.getByRole('tabpanel', { name: 'Actions', exact: true }).getByRole('dialog', { name: 'Insert token', exact: true });
+		await expect(actionsPicker).toBeHidden();
+		await editorPane.getByRole('tab', { name: 'Actions', exact: true }).click();
+		await editorPane.getByRole('tabpanel', { name: 'Actions', exact: true }).getByRole('button', { name: 'Insert a monster token', exact: true }).click();
+		await expect(actionsPicker).toBeVisible();
+		await editorPane.getByRole('tabpanel', { name: 'Actions', exact: true }).getByRole('heading', { name: 'Actions', exact: true }).click();
+		await expect(actionsPicker).toBeHidden();
+
 		const duplicateIds = await page.evaluate(() => {
 			const counts = new Map<string, number>();
 			for (const element of document.querySelectorAll('[id]')) counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
